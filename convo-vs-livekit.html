@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delta Assist — Twilio Agent Connect vs. LiveKit replatform</title>
+<style>
+  :root {
+    /* Twilio brand: gray-50 page · white cards · Ink text · Red accent */
+    --paper: #F3F4F7;       /* gray-50  — outer page bg */
+    --surface: #FFFFFF;     /* white    — cards / content */
+    --ink: #000D25;         /* Ink (blue-900) — primary text, headings */
+    --ink-2: #4D5777;       /* gray-600 — body / secondary text */
+    --muted: #7E869C;       /* gray-400 — meta, dimmer text */
+    --hairline: #DDE0E6;    /* gray-100 — borders, dividers */
+    --baseline: #9AA0B4;    /* gray-300 — faint outlines */
+    --ring: rgba(0,13,37,0.10);
+    --twilio: #EF223A;      /* Twilio Red (red-450) — Twilio-managed */
+    --livekit: #1866EE;     /* blue-500 — LiveKit-managed */
+    --you: #4D5777;         /* gray-600 — customer builds & operates */
+    --twilio-wash: rgba(239,34,58,0.06);
+    --livekit-wash: rgba(24,102,238,0.07);
+    --you-wash: rgba(77,87,119,0.07);
+    --neutral-wash: rgba(0,13,37,0.035);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .mono {
+    font-family: "SF Mono", ui-monospace, "Cascadia Mono", "JetBrains Mono", monospace;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+  a { color: inherit; }
+
+  /* ---------- header (Ink brand band) ---------- */
+  header { background: var(--ink); padding: 30px 0 44px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
+  .brand .wordmark {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700; font-size: 25px; letter-spacing: -0.5px; color: #FFFFFF;
+  }
+  .eyebrow {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--baseline);
+  }
+  h1 {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 58px);
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    margin: 14px 0 18px;
+    max-width: 21ch;
+    color: #FFFFFF;
+  }
+  .thesis {
+    max-width: 72ch; color: rgba(255,255,255,0.72); font-size: 16.5px;
+  }
+  .thesis strong { color: #FFFFFF; }
+  .meta-chips { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.22); border-radius: 999px;
+    padding: 4px 11px; color: rgba(255,255,255,0.78); background: transparent;
+  }
+
+  /* ---------- stat band (Twilio Red strip) ---------- */
+  .statband { background: var(--twilio); }
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+  .stat {
+    padding: 26px 24px 24px;
+    border-left: 1px solid rgba(255,255,255,0.22);
+  }
+  .stat:first-child { border-left: none; }
+  .stat .v {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700; font-size: 40px; line-height: 1.05; color: #FFFFFF;
+  }
+  .stat .v .from { color: rgba(255,255,255,0.6); font-weight: 500; }
+  .stat .l {
+    font-size: 11px; color: rgba(255,255,255,0.92); margin-top: 8px;
+    letter-spacing: 0.02em; line-height: 1.4;
+  }
+  @media (max-width: 820px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(3) { border-left: none; }
+    .stat:nth-child(n+3) { border-top: 1px solid rgba(255,255,255,0.22); }
+  }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 72px; }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--hairline); padding-bottom: 10px; margin-bottom: 22px; }
+  .sec-head h2 {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700; font-size: 26px; margin: 0; letter-spacing: 0;
+  }
+  .sec-head .k {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase;
+  }
+  .lede { max-width: 76ch; color: var(--ink-2); margin: 0 0 20px; }
+  .lede strong { color: var(--ink); }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 4px 0 14px; }
+  .legend .item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .sw { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid; }
+  .sw.tw { background: var(--twilio-wash); border-color: var(--twilio); }
+  .sw.lk { background: var(--livekit-wash); border-color: var(--livekit); }
+  .sw.yo { background: var(--you-wash); border-color: var(--you); }
+  .sw.ne { background: var(--neutral-wash); border-color: var(--baseline); }
+
+  /* ---------- diagrams ---------- */
+  figure.diagram { margin: 0 0 8px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 18px 8px; }
+  figure.diagram figcaption {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+    padding: 0 4px 10px;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+  }
+  figure.diagram figcaption .t { color: var(--ink); }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; fill: var(--ink); }
+  svg .lane {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.12em; fill: var(--muted);
+  }
+  svg .bt { font-size: 13px; font-weight: 600; }
+  svg .bs { font-size: 11px; fill: var(--ink-2); }
+  svg .al { font-size: 10.5px; fill: var(--ink-2); font-style: italic; }
+  svg .region-tw { fill: var(--twilio-wash); stroke: var(--twilio); stroke-width: 1; stroke-dasharray: none; }
+  svg .region-lk { fill: var(--livekit-wash); stroke: var(--livekit); stroke-width: 1; }
+  svg .region-yo { fill: var(--you-wash); stroke: var(--you); stroke-width: 1; }
+  svg .box { fill: var(--surface); stroke: var(--baseline); stroke-width: 1.2; }
+  svg .box.tw { stroke: var(--twilio); }
+  svg .box.lk { stroke: var(--livekit); }
+  svg .box.yo { stroke: var(--you); }
+  svg .flow { stroke: var(--ink-2); stroke-width: 1.6; fill: none; }
+  svg .flow.dash { stroke-dasharray: 4 4; stroke-width: 1.3; }
+  svg .bracket { stroke: var(--muted); stroke-width: 1.2; fill: none; }
+  svg .bracket-label {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.12em; fill: var(--muted);
+  }
+  svg .newchip { fill: var(--you); }
+  svg .newchip-t { font-family: "SF Mono", ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.1em; fill: #ffffff; font-weight: 700; }
+
+  /* ---------- mapping table ---------- */
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  .tablecard { border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  .tablecard table { border: none; border-radius: 0; }
+  th {
+    text-align: left; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500;
+    padding: 12px 14px; border-bottom: 1px solid var(--hairline);
+    background: var(--surface);
+  }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--hairline); vertical-align: top; font-size: 13.5px; }
+  tr:last-child td { border-bottom: none; }
+  td .cap { font-weight: 600; font-size: 14px; }
+  td .sub { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
+  tbody tr:hover { background: var(--neutral-wash); }
+  .verdict {
+    display: inline-block; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+    border-radius: 5px; padding: 3px 8px; border: 1.5px solid; white-space: nowrap;
+  }
+  .verdict.tw { color: var(--twilio); border-color: var(--twilio); background: var(--twilio-wash); }
+  .verdict.lk { color: var(--livekit); border-color: var(--livekit); background: var(--livekit-wash); }
+  .verdict.yo { color: var(--you); border-color: var(--you); background: var(--you-wash); }
+  .verdict.ne { color: var(--ink-2); border-color: var(--baseline); background: var(--neutral-wash); }
+  @media (prefers-color-scheme: light) {
+    .verdict.lk { color: #0d7a52; }
+    .verdict.yo { color: #a06d00; }
+  }
+
+  /* ---------- ledger ---------- */
+  .ledger { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 820px) { .ledger { grid-template-columns: 1fr; } }
+  .ledger .col { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 20px 22px; border-top: 3px solid var(--baseline); }
+  .ledger .col.lk { border-top-color: var(--livekit); }
+  .ledger .col.tw { border-top-color: var(--twilio); }
+  .ledger h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+  .ledger .note { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+  .ledger ul { margin: 0; padding-left: 18px; }
+  .ledger li { margin: 9px 0; font-size: 13.5px; color: var(--ink-2); }
+  .ledger li strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- cost chart ---------- */
+  .chart { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 22px 24px 18px; }
+  .chart h3 { margin: 0 0 2px; font-size: 16px; }
+  .chart .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 18px; }
+  .barrow { display: grid; grid-template-columns: 235px 1fr; gap: 14px; align-items: center; padding: 5px 0; border-radius: 6px; position: relative; }
+  .barrow:hover { background: var(--neutral-wash); }
+  .barrow .lab { font-size: 13px; text-align: right; color: var(--ink-2); line-height: 1.25; }
+  .barrow .lab b { color: var(--ink); font-weight: 600; display: block; }
+  .bartrack { position: relative; height: 22px; }
+  .bar { position: absolute; left: 0; top: 3px; height: 16px; border-radius: 0 4px 4px 0; min-width: 3px; }
+  .bar.tw { background: var(--twilio); }
+  .bar.lk { background: var(--livekit); }
+  .bar.yo { background: var(--you); }
+  .barval {
+    position: absolute; top: 1px; font-size: 12.5px; color: var(--ink);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .barrow .tip {
+    display: none; position: absolute; z-index: 3; left: 250px; bottom: calc(100% - 2px);
+    background: var(--ink); color: var(--paper); font-size: 12px; line-height: 1.45;
+    border-radius: 8px; padding: 8px 12px; max-width: 380px; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  }
+  .barrow:hover .tip, .barrow:focus-within .tip { display: block; }
+  .axisline { border-top: 1px solid var(--hairline); margin: 10px 0 6px 249px; position: relative; }
+  .chart .foot { color: var(--ink-2); font-size: 12.5px; margin-top: 14px; max-width: 78ch; }
+  details.tableview { margin-top: 14px; }
+  details.tableview summary { cursor: pointer; font-size: 12.5px; color: var(--muted); font-family: "SF Mono", ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+  details.tableview table { margin-top: 10px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- plays ---------- */
+  .plays { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 880px) { .plays { grid-template-columns: 1fr; } }
+  .play { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 20px 22px; }
+  .play .pk {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+  }
+  .play h3 { margin: 6px 0 8px; font-size: 16.5px; font-weight: 600; }
+  .play p { margin: 0 0 8px; font-size: 13.5px; color: var(--ink-2); }
+  .play p strong { color: var(--ink); }
+  .play .say {
+    border-left: 3px solid var(--twilio); padding: 8px 12px; margin-top: 10px;
+    background: var(--twilio-wash); border-radius: 0 8px 8px 0;
+    font-size: 13px; color: var(--ink);
+  }
+  .play.concede .say { border-left-color: var(--livekit); background: var(--livekit-wash); }
+
+  /* ---------- caveat + footer ---------- */
+  .caveat {
+    border: 1px solid var(--you); background: var(--you-wash);
+    border-radius: 12px; padding: 16px 20px; font-size: 13.5px; color: var(--ink-2);
+    max-width: 100%;
+  }
+  .caveat b { color: var(--ink); }
+  footer { margin: 64px 0 60px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--hairline); padding-top: 18px; }
+  footer .src { columns: 2; gap: 40px; margin-top: 8px; }
+  @media (max-width: 700px) { footer .src { columns: 1; } }
+  footer .src div { break-inside: avoid; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="brand">
+    <img src="data:image/png;base64,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" width="32" height="32" style="vertical-align:middle;" alt="Twilio">
+    <span class="wordmark">twilio</span>
+  </div>
+  <div class="eyebrow">Internal · Competitive architecture dossier · flight-sandbox “Delta Assist” · 2026-07-20</div>
+  <h1>Same demo, two architectures — and they aren’t the same product.</h1>
+  <p class="thesis">
+    <strong>LiveKit sells media infrastructure with an agent framework on top. Twilio Agent Connect sells a
+    managed conversation layer around your brain.</strong> A feature-by-feature bake-off misses the point:
+    everything above the audio — threading, memory, post-call intelligence, and all of messaging — simply
+    does not exist on the LiveKit side. It becomes the customer’s engineering backlog. This dossier maps
+    Delta Assist onto both stacks, marks the honest wins in each direction, and ends with the plays for a
+    LiveKit-shaped deal.
+  </p>
+  <div class="meta-chips">
+    <span class="chip">Source: this repo, running live</span>
+    <span class="chip">LiveKit facts: July 2026, partially unverified</span>
+    <span class="chip">Audience: Twilio field / DevRel</span>
+  </div>
+
+  <div class="stats" role="list">
+    <div class="stat" role="listitem"><div class="v"><span class="from">4 →</span> 0</div><div class="l">Vendor-run conversation services (threading, memory, intelligence, relay) after a LiveKit move</div></div>
+    <div class="stat" role="listitem"><div class="v"><span class="from">4 →</span> 9</div><div class="l">Subsystems the customer builds &amp; operates themselves (see the second diagram)</div></div>
+    <div class="stat" role="listitem"><div class="v">+1</div><div class="l">New always-on runtime: the agent worker owning STT/VAD/turn-detection/TTS</div></div>
+    <div class="stat" role="listitem"><div class="v">0</div><div class="l">SMS / messaging products in LiveKit’s catalog — outbound text-back is impossible without Twilio</div></div>
+  </div>
+</header>
+
+<!-- ================= DIAGRAMS ================= -->
+<section class="wrap" id="architectures">
+  <div class="sec-head"><span class="k">01</span><h2>The two architectures, drawn by ownership</h2></div>
+  <p class="lede">Color means <strong>who runs the box</strong>, not who invented it. Watch what happens to the
+  conversation layer — the four red boxes at the bottom of the first diagram — when the stack moves: they don’t
+  map to green LiveKit boxes. They migrate into the customer’s yellow lane.</p>
+
+  <div class="legend">
+    <span class="item"><span class="sw tw"></span>Twilio-managed</span>
+    <span class="item"><span class="sw lk"></span>LiveKit-managed</span>
+    <span class="item"><span class="sw yo"></span>Customer builds &amp; operates</span>
+    <span class="item"><span class="sw ne"></span>Neutral / bring-your-own</span>
+  </div>
+
+  <figure class="diagram">
+    <figcaption><span class="t">A — Today: Twilio Agent Connect suite</span><span>voice + SMS, one number, one profile</span></figcaption>
+    <svg viewBox="0 0 1080 500" role="img" aria-label="Architecture today: Twilio manages ConversationRelay, Messaging, Orchestrator, Memory and Intelligence; the app is a text-in text-out brain with nine tools.">
+      <!-- lane headers -->
+      <text class="lane" x="28" y="30">CUSTOMER</text>
+      <text class="lane" x="190" y="30">TWILIO CLOUD — MANAGED</text>
+      <text class="lane" x="650" y="30">YOUR APP — ONE NODE PROCESS</text>
+      <text class="lane" x="985" y="30">LLM</text>
+
+      <!-- regions -->
+      <rect class="region-tw" x="170" y="42" width="400" height="422" rx="10"/>
+      <rect class="region-yo" x="630" y="42" width="330" height="330" rx="10"/>
+
+      <!-- customer -->
+      <rect class="box" x="18" y="150" width="122" height="62" rx="8"/>
+      <text class="bt" x="34" y="176">Caller / Texter</text>
+      <text class="bs" x="34" y="194">identity = phone №</text>
+
+      <!-- twilio boxes -->
+      <rect class="box tw" x="190" y="60" width="360" height="46" rx="8"><title>Toll-free number, dual-functional: voice via TwiML app, SMS via Messaging Service.</title></rect>
+      <text class="bt" x="204" y="80">Toll-free number</text>
+      <text class="bs" x="204" y="97">+1 877 352 7023 · voice + SMS on one number</text>
+
+      <rect class="box tw" x="190" y="122" width="360" height="52" rx="8"><title>ConversationRelay: Twilio owns STT and TTS; the app never touches audio — text frames over WebSocket.</title></rect>
+      <text class="bt" x="204" y="143">ConversationRelay</text>
+      <text class="bs" x="204" y="160">managed STT · TTS · barge-in — app sees only text</text>
+
+      <rect class="box tw" x="190" y="190" width="360" height="46" rx="8"><title>Programmable Messaging: inbound SMS webhooks, outbound messages.create.</title></rect>
+      <text class="bt" x="204" y="210">Programmable Messaging</text>
+      <text class="bs" x="204" y="227">SMS in/out · Messaging Service</text>
+
+      <rect class="box tw" x="190" y="258" width="360" height="46" rx="8"><title>Conversation Orchestrator: captures voice + SMS into one conversation per customer profile (GROUP_BY_PROFILE). Threading is passive — zero app code.</title></rect>
+      <text class="bt" x="204" y="278">Conversation Orchestrator</text>
+      <text class="bs" x="204" y="295">cross-channel threading · GROUP_BY_PROFILE</text>
+
+      <rect class="box tw" x="190" y="318" width="360" height="46" rx="8"><title>Conversation Memory: phone-to-profile identity plus Recall (observations, summaries, communications) injected into every turn.</title></rect>
+      <text class="bt" x="204" y="338">Conversation Memory</text>
+      <text class="bs" x="204" y="355">phone → profile · Recall into every LLM turn</text>
+
+      <rect class="box tw" x="190" y="378" width="360" height="52" rx="8"><title>Intelligence v3: managed post-call operators — Sentiment, Summary, and a custom Resolution classifier firing a webhook on CONVERSATION_END.</title></rect>
+      <text class="bt" x="204" y="399">Conversation Intelligence v3</text>
+      <text class="bs" x="204" y="416">Sentiment · Summary · Resolution on CONVERSATION_END</text>
+
+      <!-- conversation-layer bracket -->
+      <path class="bracket" d="M162 258 h-6 v172 h6"/>
+      <text class="bracket-label" transform="translate(146 344) rotate(-90)" text-anchor="middle">THE MANAGED CONVERSATION LAYER</text>
+
+      <!-- app boxes -->
+      <rect class="box yo" x="650" y="72" width="290" height="50" rx="8"><title>tac-boot.ts — the single Twilio-coupled file (hexagonal invariant #1). WSS + webhooks in, text out.</title></rect>
+      <text class="bt" x="664" y="93">TAC server (:3001)</text>
+      <text class="bs" x="664" y="110">WSS + webhooks · the only Twilio-coupled file</text>
+
+      <rect class="box yo" x="650" y="144" width="290" height="50" rx="8"><title>The brain: stateless agent loop, nine Zod-defined tools over the same service layer as the REST API.</title></rect>
+      <text class="bt" x="664" y="165">Agent loop + 9 tools</text>
+      <text class="bs" x="664" y="182">search · book · change · cancel · loyalty · follow-up</text>
+
+      <rect class="box yo" x="650" y="216" width="290" height="46" rx="8"><title>SQLite via Drizzle — flights, bookings, follow_ups.</title></rect>
+      <text class="bt" x="664" y="236">SQLite / Drizzle</text>
+      <text class="bs" x="664" y="253">flights · bookings · follow_ups</text>
+
+      <rect class="box yo" x="650" y="284" width="290" height="50" rx="8"><title>The proactive half: drains due follow-ups every 20 s, guarded (loop check + 24 h cooldown), tool-free compose.</title></rect>
+      <text class="bt" x="664" y="305">Follow-up drainer</text>
+      <text class="bs" x="664" y="322">guards + tool-free compose → SMS back out</text>
+
+      <!-- LLM -->
+      <rect class="box" x="982" y="150" width="84" height="56" rx="8"/>
+      <text class="bt" x="996" y="174">LiteLLM</text>
+      <text class="bs" x="996" y="191">any model</text>
+
+      <!-- flows -->
+      <path class="flow" d="M140 172 C 160 172, 160 84, 188 84"/>
+      <path class="flow" d="M140 192 C 160 192, 160 212, 188 212"/>
+      <path class="flow" d="M550 148 C 600 148, 600 96, 648 96"/>
+      <path class="flow" d="M550 213 C 600 213, 600 112, 648 112" opacity="0.85"/>
+      <path class="flow dash" d="M550 341 C 610 341, 610 168, 648 168"/>
+      <path class="flow dash" d="M550 404 C 620 404, 620 308, 648 308"/>
+      <path class="flow" d="M940 168 C 962 168, 962 176, 980 176"/>
+    </svg>
+  </figure>
+
+  <figure class="diagram">
+    <figcaption><span class="t">B — Proposed: LiveKit replatform</span><span>Twilio keeps the number, the trunk, and all of SMS</span></figcaption>
+    <svg viewBox="0 0 1080 570" role="img" aria-label="Proposed architecture: Twilio provides SIP trunk and SMS transport; LiveKit provides SIP ingress, rooms and Inference STT/TTS; the customer's app grows to nine subsystems including an agent worker, DIY threading, memory and classification.">
+      <!-- lane headers -->
+      <text class="lane" x="18" y="30">CUSTOMER</text>
+      <text class="lane" x="150" y="30">TWILIO — TRANSPORT</text>
+      <text class="lane" x="392" y="30">LIVEKIT CLOUD — MEDIA</text>
+      <text class="lane" x="662" y="30">YOUR APP — NOW ALSO THE CONVERSATION LAYER</text>
+
+      <!-- regions -->
+      <rect class="region-tw" x="140" y="42" width="222" height="486" rx="10"/>
+      <rect class="region-lk" x="380" y="42" width="252" height="300" rx="10"/>
+      <rect class="region-yo" x="650" y="42" width="312" height="486" rx="10"/>
+
+      <!-- customer -->
+      <rect class="box" x="10" y="150" width="112" height="62" rx="8"/>
+      <text class="bt" x="24" y="176">Caller /</text>
+      <text class="bt" x="24" y="192">Texter</text>
+
+      <!-- twilio -->
+      <rect class="box tw" x="158" y="76" width="186" height="66" rx="8"><title>Elastic SIP Trunk: number association routes ALL inbound voice to the trunk (the TwiML app is bypassed entirely). Origination points at LiveKit's SIP endpoint.</title></rect>
+      <text class="bt" x="172" y="98">Elastic SIP Trunk</text>
+      <text class="bs" x="172" y="115">TFN association · orig →</text>
+      <text class="bs" x="172" y="130">LiveKit SIP · ~$0.013/min</text>
+
+      <rect class="box tw" x="158" y="428" width="186" height="66" rx="8"><title>Plain Programmable Messaging: inbound webhook straight to the app, outbound via messages.create. The Orchestrator capture layer is gone.</title></rect>
+      <text class="bt" x="172" y="450">Programmable</text>
+      <text class="bt" x="172" y="466">Messaging</text>
+      <text class="bs" x="172" y="483">plain webhooks · SMS stays here</text>
+
+      <!-- livekit -->
+      <rect class="box lk" x="398" y="76" width="216" height="50" rx="8"><title>SIP ingress + dispatch rules: per-caller room, agent dispatched by name.</title></rect>
+      <text class="bt" x="412" y="97">SIP ingress + dispatch</text>
+      <text class="bs" x="412" y="114">per-caller room</text>
+
+      <rect class="box lk" x="398" y="146" width="216" height="58" rx="8"><title>The room: LiveKit's global WebRTC SFU. The agent worker joins over outbound WSS; browser participants can join the same room — web voice for free.</title></rect>
+      <text class="bt" x="412" y="166">Room — WebRTC SFU</text>
+      <text class="bs" x="412" y="183">⇄ worker over outbound WSS</text>
+      <text class="bs" x="412" y="197">+ browser voice for free</text>
+
+      <rect class="box lk" x="398" y="210" width="216" height="52" rx="8"><title>LiveKit Inference: keyless hosted STT/TTS (Deepgram, ElevenLabs, Cartesia and more). No Anthropic and no custom endpoints in the LLM catalog — the LLM leg cannot run here.</title></rect>
+      <text class="bt" x="412" y="231">Inference — STT · TTS</text>
+      <text class="bs" x="412" y="248">keyless · no LLM leg for BYO models</text>
+
+      <rect class="box lk" x="398" y="282" width="216" height="44" rx="8"><title>Developer observability: per-stage latency traces (OTel), synchronized audio replay, live agent console. 30-day retention. This is debugging tooling, not language analytics.</title></rect>
+      <text class="bt" x="412" y="302">OTel traces · audio replay</text>
+      <text class="bs" x="412" y="319">dev observability, not analytics</text>
+
+      <!-- app -->
+      <rect class="box yo" x="668" y="60" width="276" height="52" rx="8"><title>NEW: an agents-js worker (AgentSession) running in the app container. It owns VAD, turn detection, barge-in and the audio pipeline — a competency the team has never had to staff.</title></rect>
+      <text class="bt" x="682" y="81">agents-js worker — AgentSession</text>
+      <text class="bs" x="682" y="98">owns VAD · turn detection · barge-in</text>
+      <rect class="newchip" x="906" y="66" width="32" height="15" rx="4"/><text class="newchip-t" x="911" y="77">NEW</text>
+
+      <rect class="box yo" x="668" y="128" width="276" height="44" rx="8"><title>NEW: adapter mapping the existing Zod tool registry into LiveKit tool definitions — single source, identity injected via session userdata.</title></rect>
+      <text class="bt" x="682" y="148">Tool adapter — same 9 tools</text>
+      <text class="bs" x="682" y="165">Zod registry, single-source</text>
+      <rect class="newchip" x="906" y="134" width="32" height="15" rx="4"/><text class="newchip-t" x="911" y="145">NEW</text>
+
+      <rect class="box yo" x="668" y="188" width="276" height="44" rx="8"><title>The existing agent loop keeps serving SMS and follow-up composition; AgentSession serves voice.</title></rect>
+      <text class="bt" x="682" y="208">Agent loop — SMS + follow-ups</text>
+      <text class="bs" x="682" y="225">the existing brain, voice moves out</text>
+
+      <rect class="box yo" x="668" y="248" width="276" height="44" rx="8"><title>NEW: replaces Orchestrator. The app mints its own conversation IDs and joins voice + SMS by phone number with an inactivity window.</title></rect>
+      <text class="bt" x="682" y="268">DIY threading — minted conv IDs</text>
+      <text class="bs" x="682" y="285">replaces Orchestrator</text>
+      <rect class="newchip" x="906" y="254" width="32" height="15" rx="4"/><text class="newchip-t" x="911" y="265">NEW</text>
+
+      <rect class="box yo" x="668" y="308" width="276" height="44" rx="8"><title>NEW: replaces Memory/Recall. Per-conversation summaries generated at session end by a tool-free LLM call, stored locally, injected into prompts.</title></rect>
+      <text class="bt" x="682" y="328">DIY memory — summaries + recall</text>
+      <text class="bs" x="682" y="345">replaces Conversation Memory</text>
+      <rect class="newchip" x="906" y="314" width="32" height="15" rx="4"/><text class="newchip-t" x="911" y="325">NEW</text>
+
+      <rect class="box yo" x="668" y="368" width="276" height="52" rx="8"><title>NEW: replaces Intelligence v3. Voice gets a session-end hook; SMS needs an inactivity sweeper the customer must invent — Orchestrator did session-end silently for them.</title></rect>
+      <text class="bt" x="682" y="389">DIY resolution classifier</text>
+      <text class="bs" x="682" y="406">+ SMS inactivity sweeper · replaces Intelligence</text>
+      <rect class="newchip" x="906" y="374" width="32" height="15" rx="4"/><text class="newchip-t" x="911" y="385">NEW</text>
+
+      <rect class="box yo" x="668" y="436" width="276" height="40" rx="8"><title>NEW: plain SMS webhook route + twilio SDK for outbound sends.</title></rect>
+      <text class="bt" x="682" y="455">SMS webhook route + twilio SDK</text>
+      <rect class="newchip" x="906" y="442" width="32" height="15" rx="4"/><text class="newchip-t" x="911" y="453">NEW</text>
+
+      <rect class="box yo" x="668" y="488" width="276" height="32" rx="8"><title>Unchanged: SQLite/Drizzle and the follow-up drainer.</title></rect>
+      <text class="bt" x="682" y="509">SQLite · follow-up drainer</text>
+
+      <!-- rebuilt bracket -->
+      <path class="bracket" d="M968 248 h6 v172 h-6"/>
+      <text class="bracket-label" transform="translate(992 334) rotate(-90)" text-anchor="middle">REBUILT IN THE CUSTOMER’S APP</text>
+
+      <!-- LLM -->
+      <rect class="box" x="982" y="60" width="84" height="52" rx="8"/>
+      <text class="bt" x="994" y="82">LiteLLM</text>
+      <text class="bs" x="994" y="99">any model</text>
+
+      <!-- flows -->
+      <path class="flow" d="M122 168 C 140 168, 140 108, 156 108"/>
+      <text class="al" x="126" y="144">PSTN</text>
+      <path class="flow" d="M344 108 C 366 108, 370 100, 396 100"/>
+      <text class="al" x="346" y="88">SIP · TCP</text>
+      <path class="flow" d="M614 172 C 640 172, 640 86, 666 86"/>
+      <path class="flow dash" d="M614 236 C 644 236, 644 100, 666 100"/>
+      <path class="flow" d="M122 196 C 140 196, 140 460, 156 460"/>
+      <text class="al" x="96" y="222">SMS</text>
+      <path class="flow" d="M344 460 C 500 460, 520 456, 666 456"/>
+      <text class="al" x="452" y="448">webhook / messages.create</text>
+      <path class="flow" d="M944 82 C 962 82, 964 84, 980 84"/>
+    </svg>
+  </figure>
+</section>
+
+<!-- ================= MAPPING TABLE ================= -->
+<section class="wrap" id="mapping">
+  <div class="sec-head"><span class="k">02</span><h2>Product-by-product: what maps, what doesn’t</h2></div>
+  <p class="lede">The honest read per capability. <span class="verdict lk">LK win</span> means concede it and
+  reposition; <span class="verdict yo">DIY</span> means there is no LiveKit product — it becomes the customer’s
+  code; <span class="verdict tw">TW win</span> is where the deal is defended.</p>
+  <div class="tablecard"><table>
+    <thead><tr><th style="width:21%">Capability</th><th style="width:29%">Twilio today</th><th style="width:31%">LiveKit story</th><th>Honest read</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="cap">PSTN + numbers</span><div class="sub">getting a phone call in</div></td>
+        <td>Native. One toll-free number, dual-functional voice + SMS.</td>
+        <td>Needs a third-party SIP trunk — <em>their own docs recommend Twilio’s</em>. LiveKit-native numbers (Nov ’25) are inbound-only: no SMS, no porting.</td>
+        <td><span class="verdict tw">TW win</span><div class="sub">Twilio stays in every LiveKit deployment.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Voice media / STT / TTS</span><div class="sub">the audio pipeline</div></td>
+        <td>ConversationRelay: managed, config-at-TwiML-time, app never touches audio. Simple; limited control, no mid-call changes.</td>
+        <td>Full pipeline ownership: provider choice or keyless Inference, mid-call swaps, realtime speech-to-speech option, Krisp noise cancellation, recording egress to own bucket.</td>
+        <td><span class="verdict lk">LK win</span><div class="sub">Genuine. Don’t bluff on audio control.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Turn detection &amp; barge-in</span><div class="sub">conversational feel</div></td>
+        <td>ConversationRelay built-ins (<code class="mono">prompt</code>/<code class="mono">interrupt</code>). Works; not tunable.</td>
+        <td>Semantic end-of-utterance transformer model + VAD, tunable, automatic interruption handling.</td>
+        <td><span class="verdict lk">LK win</span><div class="sub">Their strongest technical talking point.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Agent runtime</span><div class="sub">what the customer deploys</div></td>
+        <td>None. The app is text-in/text-out webhooks — no audio process to run, scale, or page on.</td>
+        <td>A new always-on worker (Node or Python) the customer deploys and operates; managed hosting exists but free-tier cold starts run 10–20 s.</td>
+        <td><span class="verdict tw">TW win</span><div class="sub">Time-to-value and ops burden.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Cross-channel threading</span><div class="sub">voice + SMS = one thread</div></td>
+        <td>Orchestrator <code class="mono">GROUP_BY_PROFILE</code> — passive capture, zero app code.</td>
+        <td>No product. Customer mints conversation IDs, joins channels by phone number, invents an inactivity policy.</td>
+        <td><span class="verdict yo">DIY</span><div class="sub">The moat, part 1.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Memory across sessions</span><div class="sub">“remembers last week’s call”</div></td>
+        <td>Conversation Memory: phone→profile, auto-extracted observations, Recall into every turn.</td>
+        <td>No product. Customer builds a summary store and a recall pipeline, and owns its quality forever.</td>
+        <td><span class="verdict yo">DIY</span><div class="sub">The moat, part 2.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Post-call intelligence</span><div class="sub">what happened, what next</div></td>
+        <td>Intelligence v3 operators: managed Sentiment / Summary / custom classifiers, webhook per conversation end.</td>
+        <td>Excellent <em>developer</em> observability (latency traces, audio replay) — but it’s debugging tooling, not language analytics. Classification is a DIY LLM call.</td>
+        <td><span class="verdict ne">Split</span><div class="sub">Concede debugging; defend analytics.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Messaging / SMS</span><div class="sub">the second channel</div></td>
+        <td>Native — and the proactive follow-up story (“the agent texts you back”) runs on it.</td>
+        <td>Nothing. No SMS, no messaging products at all. Every LiveKit deployment that texts is also a Twilio deployment.</td>
+        <td><span class="verdict tw">TW win</span><div class="sub">Absolute, not relative.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Browser / in-app voice</span><div class="sub">talk to the agent from the web</div></td>
+        <td>Separate product surface (Voice SDK), not wired in this demo.</td>
+        <td>Native WebRTC — a browser client joins the same room and the same agent answers. Zero extra work.</td>
+        <td><span class="verdict lk">LK win</span><div class="sub">Their best demo moment.</div></td>
+      </tr>
+      <tr>
+        <td><span class="cap">Telecom compliance</span><div class="sub">TF verification, A2P, STIR/SHAKEN</div></td>
+        <td>First-party, mature, unavoidable for real traffic.</td>
+        <td>Out of scope — inherited from whichever trunk/SMS provider they still need. HIPAA BAA only at Scale ($500/mo).</td>
+        <td><span class="verdict tw">TW win</span><div class="sub">The boring win that closes.</div></td>
+      </tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ================= LEDGER ================= -->
+<section class="wrap" id="tradeoffs">
+  <div class="sec-head"><span class="k">03</span><h2>The honest ledger</h2></div>
+  <p class="lede">What this repo’s own migration research concluded — written to plan a move <em>to</em> LiveKit,
+  so it is not marketing in either direction.</p>
+  <div class="ledger">
+    <div class="col lk">
+      <h3>What LiveKit genuinely gives them</h3>
+      <div class="note">Concede these early — credibility is the currency.</div>
+      <ul>
+        <li><strong>Full audio ownership:</strong> provider mixing, mid-call model changes, latency tuning, realtime speech-to-speech as an option, first-class recording.</li>
+        <li><strong>Materially better turn detection</strong> and interruption handling than ConversationRelay’s built-ins.</li>
+        <li><strong>Best-in-class dev observability:</strong> per-stage latency traces (LLM TTFT, TTS TTFB, end-of-utterance delay) with synchronized audio replay.</li>
+        <li><strong>Browser voice for free</strong> — WebRTC is the native transport, telephony is the add-on.</li>
+        <li><strong>Open-source framework</strong> (Apache 2.0) with real momentum: OpenAI’s Advanced Voice Mode runs on it; ~25% of US 911 dispatch centers; $1B valuation Jan ’26.</li>
+        <li><strong>Warm/cold transfer + DTMF</strong> for contact-center patterns.</li>
+      </ul>
+    </div>
+    <div class="col tw">
+      <h3>What they give up — and now own</h3>
+      <div class="note">Each bullet is a yellow “NEW” box in diagram B.</div>
+      <ul>
+        <li><strong>Threading:</strong> Orchestrator’s stable cross-channel conversation ID is gone — mint your own, join channels by phone, define session boundaries yourself.</li>
+        <li><strong>Memory:</strong> Recall’s auto-extracted observations become a hand-built summary store whose quality is now a product surface.</li>
+        <li><strong>Post-call classification:</strong> the <code class="mono">CONVERSATION_END</code> → operator → webhook chain becomes DIY hooks — and SMS needs an inactivity sweeper the platform used to provide silently.</li>
+        <li><strong>An audio engineering competency:</strong> STT/TTS/VAD/turn-detection choices, a latency budget, and a new always-on runtime to operate and page on.</li>
+        <li><strong>All of messaging:</strong> SMS, and with it the proactive “we’ll text you back” motion — unless they keep Twilio, which they will.</li>
+        <li><strong>Single-vendor accountability:</strong> the voice path now spans Twilio trunk → LiveKit SIP → their worker → 2–3 model vendors.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COST ================= -->
+<section class="wrap" id="economics">
+  <div class="sec-head"><span class="k">04</span><h2>Per-minute economics of the LiveKit stack</h2></div>
+  <p class="lede">The number that surprises people: <strong>LiveKit itself is ~$0.014 of a ~$0.23 minute.</strong>
+  The bill is the model vendors — above all TTS. Colors mark who invoices the customer.</p>
+
+  <div class="chart">
+    <h3>Cascaded voice-agent minute, as researched for this repo</h3>
+    <div class="sub">US inbound toll-free call · cascaded STT → LLM → TTS · public list prices, July 2026 (unverified — see caveat)</div>
+    <div class="legend" style="margin-bottom:14px">
+      <span class="item"><span class="sw lk"></span>Billed via LiveKit (platform or Inference pass-through)</span>
+      <span class="item"><span class="sw tw"></span>Billed by Twilio</span>
+      <span class="item"><span class="sw yo"></span>Billed by the customer’s own LLM provider</span>
+    </div>
+
+    <div class="barrow" tabindex="0">
+      <div class="lab"><b>TTS — ElevenLabs v3</b>via LiveKit Inference</div>
+      <div class="bartrack"><div class="bar lk" style="width:78%"></div><span class="barval" style="left:calc(78% + 8px)">$0.180</span></div>
+      <div class="tip">$0.18/min at ElevenLabs v3 list via Inference. This one line is ~78% of the stack. Swapping to a budget voice (Cartesia/Deepgram tiers) collapses it — TTS choice <em>is</em> the cost model.</div>
+    </div>
+    <div class="barrow" tabindex="0">
+      <div class="lab"><b>LLM — via LiteLLM</b>customer’s own provider</div>
+      <div class="bartrack"><div class="bar yo" style="width:8.7%"></div><span class="barval" style="left:calc(8.7% + 8px)">≈$0.020</span></div>
+      <div class="tip">From LiveKit’s own worked phone-agent example (token-billed; varies by model and verbosity). Cannot run on Inference: the catalog has no Anthropic models and no custom OpenAI-compatible endpoints.</div>
+    </div>
+    <div class="barrow" tabindex="0">
+      <div class="lab"><b>Twilio SIP trunk</b>toll-free inbound</div>
+      <div class="bartrack"><div class="bar tw" style="width:5.7%"></div><span class="barval" style="left:calc(5.7% + 8px)">$0.013</span></div>
+      <div class="tip">Elastic SIP Trunking origination on a toll-free number, US. This is Twilio’s slice of a LiveKit deployment — plus all SMS.</div>
+    </div>
+    <div class="barrow" tabindex="0">
+      <div class="lab"><b>LiveKit agent session</b>beyond plan quota</div>
+      <div class="bartrack"><div class="bar lk" style="width:4.3%"></div><span class="barval" style="left:calc(4.3% + 8px)">$0.010</span></div>
+      <div class="tip">$0.01/min after included quota (1,000 min on the free Build plan, 5,000 on Ship $50/mo). A 500-min/mo demo never pays this.</div>
+    </div>
+    <div class="barrow" tabindex="0">
+      <div class="lab"><b>STT — Deepgram Nova-3</b>via LiveKit Inference</div>
+      <div class="bartrack"><div class="bar lk" style="width:2.1%"></div><span class="barval" style="left:calc(2.1% + 8px)">$0.0048</span></div>
+      <div class="tip">Speech-to-text is nearly free relative to TTS — 37× cheaper than the ElevenLabs line above.</div>
+    </div>
+    <div class="barrow" tabindex="0">
+      <div class="lab"><b>LiveKit SIP minute</b>beyond plan quota</div>
+      <div class="bartrack"><div class="bar lk" style="width:1.7%"></div><span class="barval" style="left:calc(1.7% + 8px)">$0.004</span></div>
+      <div class="tip">LiveKit meters trunk minutes too ($0.003–0.004/min after quota) — a second per-minute charge stacked on the Twilio trunk rate.</div>
+    </div>
+    <div class="axisline"></div>
+
+    <p class="foot"><strong>Total ≈ $0.23/min</strong> at these list prices — against which
+    ConversationRelay’s bundled per-minute price (pull current rates for the account) plus Intelligence operator
+    pricing is the honest comparison. Two sales-relevant facts: <strong>(1)</strong> the platform fees are noise;
+    both stacks compete on model economics. <strong>(2)</strong> fixed costs barely differ — the number and all SMS
+    fees are identical in both architectures because they stay on Twilio either way; LiveKit adds $0 (Build) or
+    $50/mo (Ship, the realistic floor for always-on managed hosting).</p>
+
+    <details class="tableview">
+      <summary>Table view</summary>
+      <table>
+        <thead><tr><th>Component</th><th>Billed by</th><th class="num">$/min</th><th class="num">Share</th></tr></thead>
+        <tbody>
+          <tr><td>TTS — ElevenLabs v3 (Inference)</td><td>LiveKit</td><td class="num">0.1800</td><td class="num">77.6%</td></tr>
+          <tr><td>LLM — via LiteLLM (worked example)</td><td>Customer’s provider</td><td class="num">≈0.0200</td><td class="num">8.6%</td></tr>
+          <tr><td>Twilio Elastic SIP Trunk, TF inbound</td><td>Twilio</td><td class="num">0.0130</td><td class="num">5.6%</td></tr>
+          <tr><td>LiveKit agent session (post-quota)</td><td>LiveKit</td><td class="num">0.0100</td><td class="num">4.3%</td></tr>
+          <tr><td>STT — Deepgram Nova-3 (Inference)</td><td>LiveKit</td><td class="num">0.0048</td><td class="num">2.1%</td></tr>
+          <tr><td>LiveKit SIP minute (post-quota)</td><td>LiveKit</td><td class="num">0.0040</td><td class="num">1.7%</td></tr>
+          <tr><td><strong>Total</strong></td><td></td><td class="num"><strong>≈0.2318</strong></td><td class="num">100%</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+</section>
+
+<!-- ================= PLAYS ================= -->
+<section class="wrap" id="plays">
+  <div class="sec-head"><span class="k">05</span><h2>Selling against LiveKit — five plays</h2></div>
+  <p class="lede">Built from actually planning a migration onto their stack — these are the pressure points that
+  survived contact with the details.</p>
+  <div class="plays">
+    <div class="play">
+      <div class="pk">Play 1 · Reframe</div>
+      <h3>“LiveKit replaces Twilio” is false — even in their docs</h3>
+      <p>LiveKit’s telephony quickstart is literally “connect your Twilio Elastic SIP trunk.” Their native numbers
+      are inbound-only with no SMS and no porting. A LiveKit win is not a Twilio rip-out; it’s a re-scoping of
+      Twilio to transport.</p>
+      <div class="say">“Let’s be precise: LiveKit doesn’t connect to the phone network or send a single text.
+      The question isn’t Twilio <em>or</em> LiveKit — it’s how much you want to build above the media layer.”</div>
+    </div>
+    <div class="play">
+      <div class="pk">Play 2 · Count the boxes</div>
+      <h3>The conversation layer becomes their backlog</h3>
+      <p>Threading, memory, session-end detection, post-call classification: four managed services that become
+      five engineering projects (SMS session-end is a policy Orchestrator ran silently). Then they own the
+      quality of each, forever.</p>
+      <div class="say">“Here are the two diagrams. Every yellow box marked NEW is code your team writes,
+      tests, operates, and pages on. What’s your roadmap cost for a quarter of conversation infrastructure?”</div>
+    </div>
+    <div class="play concede">
+      <div class="pk">Play 3 · Concede the media layer</div>
+      <h3>Don’t bluff on audio — pivot on it</h3>
+      <p>Their turn detection, latency tooling, and audio control are genuinely better; OpenAI’s voice mode runs
+      on their SFU. Arguing this loses the room. The pivot: that power matters when voice-pipeline control
+      <em>is the product</em>. For a support/booking agent, the customer experience differentiator is
+      remembering the caller and texting them back — the layer LiveKit doesn’t have.</p>
+      <div class="say">“If your core problem is milliseconds and model mixing, they’re a credible choice.
+      Is that your problem — or is it resolution rate and repeat contacts?”</div>
+    </div>
+    <div class="play">
+      <div class="pk">Play 4 · The omnichannel wedge</div>
+      <h3>Demo the thing they cannot do</h3>
+      <p>This repo is the wedge, live: call, hang up unresolved, get a personalized text on the same number,
+      reply, and the agent remembers everything — one profile across channels. On LiveKit, half that flow
+      doesn’t exist and the other half is DIY.</p>
+      <div class="say">“Call the demo number, then just wait. The follow-up text you receive is the product
+      gap in one SMS.”</div>
+    </div>
+    <div class="play">
+      <div class="pk">Play 5 · Total cost of operating</div>
+      <h3>Platform fees are noise; ops and models are the bill</h3>
+      <p>Their per-minute platform cost (~$0.014) undercuts nothing meaningful: ~90% of a voice minute is model
+      vendors either way, and TTS choice dominates. What changes is headcount-shaped: a new always-on runtime,
+      2–3 more vendor relationships, and an audio competency. And HIPAA needs their $500/mo tier.</p>
+      <div class="say">“You’d be trading a per-minute line item you can read on one invoice for an
+      engineering budget you can’t.”</div>
+    </div>
+    <div class="play">
+      <div class="pk">Field note · Where we’re exposed</div>
+      <h3>Know our own soft spots before they raise them</h3>
+      <p>Be ready for: ConversationRelay’s fixed pipeline (no mid-call model swap, no raw audio), no browser-voice
+      story in this stack, TAC SDK maturity (1.0.x, rough edges this repo hit), and Intelligence v3’s PCI/HIPAA
+      ineligibility. If the buyer leads with any of these, Play 3 honesty is the only move that keeps the room.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CAVEAT ================= -->
+<section class="wrap" id="caveats">
+  <div class="caveat">
+    <b>Read before quoting numbers.</b> LiveKit-side facts were researched 2026-07-08 → 2026-07-20 from public
+    pages (docs.livekit.io, livekit.com/pricing, their blog and GitHub). The adversarial verification pass was
+    rate-limited before completing: <b>25 claims — including every price above — are sourced but unverified</b>
+    (list: <span class="mono">docs/superpowers/research/2026-07-20-livekit-deep-research-capture.md</span>).
+    Twilio-side mechanics (trunk/TwiML routing exclusivity, SMS webhook suppression under Orchestrator capture)
+    came from Twilio docs via MCP, same caveat. Verify prices against live pages before customer-facing use.
+  </div>
+</section>
+
+<footer class="wrap">
+  <div><b>Sources.</b> This repository (README, ARCHITECTURE, CLAUDE.md — the running Twilio implementation) ·
+  <span class="mono">docs/superpowers/research/2026-07-08-livekit-replatform-research.md</span> ·
+  <span class="mono">2026-07-20-livekit-deep-research-capture.md</span> (25 claims + 16 URLs) ·
+  migration plan <span class="mono">docs/superpowers/plans/2026-07-20-livekit-replatform.md</span>.</div>
+  <div class="src">
+    <div>livekit.com/pricing · /pricing/inference · /blog/introducing-livekit-inference</div>
+    <div>docs.livekit.io — /agents/ · /agents/logic/tools/ · /telephony/ (Twilio guide) · /deploy/admin/quotas-and-limits/</div>
+    <div>twilio.com/docs — Elastic SIP Trunking (PhoneNumber resource, pricing) · Conversations/Orchestrator capture</div>
+    <div>Generated 2026-07-20 · internal use · not customer-facing collateral</div>
+  </div>
+</footer>
+
+</body>
+</html>

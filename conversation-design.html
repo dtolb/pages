@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Account Consolidation Concierge — Conversation Design</title>
+<!-- Twilio brand type: Helvetica Neue system stack (no web fonts) -->
+<style>
+  :root{
+    /* Twilio palette — Ink surfaces, white content, Twilio Red signature */
+    --ink:#000D25; --panel:#0A1836; --panel-2:#122247; --raised:#183063;
+    --line:#20305A; --line-soft:#16223F;
+    --text:#FFFFFF; --muted:#9AA0B4; --faint:#7E869C;
+    --voice:#19ABF3;      /* voice / calls — blue-300 */
+    --msg:#1866EE;        /* messaging / verified / progress — blue-500 */
+    --transit:#EF223A;    /* attention / in-motion / signature — Twilio Red */
+    --ai:#9AA0B4;         /* intelligence / telemetry — neutral gray-300 */
+    --danger:#B10F23;     /* critical — red-600 */
+    --radius:16px; --radius-sm:10px;
+    --maxw:1180px;
+    --shadow:0 20px 50px -20px rgba(0,0,0,.7);
+    --f-display:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --f-body:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --f-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink); color:var(--text); font-family:var(--f-body);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 500px at 85% -10%, rgba(239,34,58,.08), transparent 60%),
+      radial-gradient(700px 480px at 5% 8%, rgba(24,102,238,.08), transparent 55%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:var(--maxw); margin-inline:auto; padding-inline:clamp(18px,4vw,40px)}
+  a{color:inherit}
+  ::selection{background:rgba(239,34,58,.32)}
+
+  /* ---------- top nav ---------- */
+  header.nav{
+    position:sticky; top:0; z-index:50; backdrop-filter:blur(12px);
+    background:rgba(0,13,37,.85); border-bottom:1px solid var(--line-soft);
+  }
+  .nav-inner{display:flex; align-items:center; gap:20px; height:60px}
+  .brand{display:flex; align-items:center; gap:9px; white-space:nowrap}
+  .brand .bug{display:block}
+  .brand .wordmark{font-family:var(--f-display); font-weight:700; letter-spacing:-0.5px; color:#fff; font-size:1.18rem}
+  .brand .brand-sep{width:1px; height:20px; background:var(--line); margin:0 5px}
+  .brand .brand-proj{font-family:var(--f-display); font-weight:500; font-size:.86rem; color:var(--muted)}
+  @media(max-width:620px){ .brand .brand-sep,.brand .brand-proj{display:none} }
+  .nav-links{display:flex; gap:2px; margin-left:auto; flex-wrap:wrap}
+  .nav-links a{font-family:var(--f-mono); font-size:.72rem; text-decoration:none; color:var(--muted); padding:6px 9px; border-radius:8px; transition:.18s}
+  .nav-links a:hover{color:var(--text); background:var(--panel-2)}
+  .nav-links a.active{color:#fff; background:var(--msg)}
+  @media(max-width:880px){ .nav-links{display:none} }
+
+  /* ---------- shared ---------- */
+  section{padding-block:clamp(56px,8vw,104px); border-top:1px solid var(--line-soft)}
+  section#hero{border-top:none}
+  .eyebrow{font-family:var(--f-mono); font-size:.73rem; letter-spacing:.2em; text-transform:uppercase; color:var(--voice); display:inline-flex; align-items:center; gap:9px}
+  .eyebrow::before{content:""; width:26px; height:1px; background:currentColor; opacity:.6}
+  h2.section-title{font-family:var(--f-display); font-weight:600; font-size:clamp(1.7rem,3.4vw,2.55rem); line-height:1.08; letter-spacing:-.01em; margin:16px 0 14px}
+  .lede{color:var(--muted); max-width:70ch; font-size:1.04rem}
+  .reveal{opacity:0; transform:translateY(22px); transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1; transform:none}
+
+  /* pills / chips */
+  .chip{font-family:var(--f-mono); font-size:.72rem; padding:5px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); white-space:nowrap}
+  .chip.voice{color:var(--voice); border-color:rgba(25,171,243,.45); background:rgba(25,171,243,.08)}
+  .chip.msg{color:#5aa6ff; border-color:rgba(24,102,238,.45); background:rgba(24,102,238,.1)}
+  .chip.transit{color:#ff6b7d; border-color:rgba(239,34,58,.42); background:rgba(239,34,58,.1)}
+  .chip.ai{color:var(--ai); border-color:rgba(154,160,180,.4); background:rgba(154,160,180,.08)}
+
+  /* ---------- HERO ---------- */
+  #hero .hero-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(28px,4vw,56px); align-items:center; padding-top:clamp(40px,6vw,72px)}
+  @media(max-width:900px){ #hero .hero-grid{grid-template-columns:1fr; gap:40px} }
+  .h1{font-family:var(--f-display); font-weight:700; font-size:clamp(2.3rem,5.4vw,4rem); line-height:1.02; letter-spacing:-.025em}
+  .h1 .grad{color:var(--transit)}
+  .hero-sub{margin-top:22px; color:var(--muted); font-size:1.12rem; max-width:52ch}
+  .tenets{display:flex; flex-wrap:wrap; gap:8px; margin-top:26px}
+  .meta-row{display:flex; flex-wrap:wrap; gap:18px 26px; margin-top:30px; font-family:var(--f-mono); font-size:.76rem; color:var(--faint)}
+  .meta-row b{color:var(--muted); font-weight:500}
+
+  /* stat band — the one place large-area Twilio Red is allowed */
+  .statband{background:var(--transit)}
+  .statband .wrap{display:flex; flex-wrap:wrap}
+  .stat{flex:1 1 0; min-width:150px; text-align:center; padding:26px 16px; border-left:1px solid rgba(255,255,255,.22)}
+  .stat:first-child{border-left:none}
+  .stat .num{font-family:var(--f-display); font-weight:700; color:#fff; font-size:clamp(1.9rem,4vw,2.5rem); line-height:1}
+  .stat .lbl{display:block; margin-top:8px; color:#fff; font-size:.7rem; letter-spacing:.13em; text-transform:uppercase; opacity:.92}
+  @media(max-width:620px){ .stat{flex-basis:50%; border-left:none} }
+
+  /* phone */
+  .phone-stage{display:flex; flex-direction:column; align-items:center; gap:16px}
+  .phone{
+    width:min(360px,86vw); background:#05080F; border-radius:44px; padding:14px;
+    border:1px solid var(--line); box-shadow:var(--shadow), inset 0 0 0 2px rgba(255,255,255,.02);
+    position:relative;
+  }
+  .phone .notch{position:absolute; top:14px; left:50%; transform:translateX(-50%); width:120px; height:26px; background:#05080F; border-radius:0 0 16px 16px; z-index:3}
+  .screen{background:linear-gradient(180deg,#0C1524,#0A111D); border-radius:32px; height:560px; display:flex; flex-direction:column; overflow:hidden; position:relative}
+  .p-head{padding:26px 16px 12px; text-align:center; border-bottom:1px solid var(--line-soft); background:rgba(18,28,46,.6)}
+  .p-avatar{width:44px; height:44px; border-radius:50%; margin:0 auto 6px; background:var(--msg); display:grid; place-items:center; font-family:var(--f-display); font-weight:700; color:#fff; font-size:1.1rem}
+  .p-name{font-family:var(--f-display); font-weight:600; font-size:.98rem}
+  .p-name span{display:block; font-family:var(--f-mono); font-weight:400; font-size:.66rem; color:var(--faint); margin-top:2px}
+  .thread{flex:1; overflow-y:auto; padding:14px 12px 18px; scroll-behavior:smooth; scrollbar-width:thin; scrollbar-color:var(--line) transparent}
+  .thread::-webkit-scrollbar{width:6px} .thread::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px}
+  .daystamp{text-align:center; font-family:var(--f-mono); font-size:.6rem; color:var(--faint); margin:10px 0 8px; letter-spacing:.06em}
+  .msg-row{display:flex; margin-bottom:5px; animation:pop .38s cubic-bezier(.2,.8,.2,1)}
+  @keyframes pop{from{opacity:0; transform:translateY(8px) scale(.98)} to{opacity:1; transform:none}}
+  .bubble{max-width:82%; padding:9px 13px; border-radius:18px; font-size:.83rem; line-height:1.42}
+  .msg-row.in{justify-content:flex-start}
+  .msg-row.in .bubble{background:#22304C; border-bottom-left-radius:5px}
+  .msg-row.out{justify-content:flex-end}
+  .msg-row.out .bubble{background:var(--msg); color:#fff; border-bottom-right-radius:5px; font-weight:500}
+  .telemetry{max-width:88%; margin:2px 0 9px; display:flex; flex-direction:column; gap:3px}
+  .telemetry.out{align-self:flex-end; align-items:flex-end}
+  .tele-tag{font-family:var(--f-mono); font-size:.63rem; color:var(--muted); background:rgba(154,160,180,.08); border:1px solid rgba(154,160,180,.2); border-left:2px solid var(--faint); padding:3px 7px; border-radius:5px; opacity:.94}
+  .tele-tag.state{color:#5aa6ff; background:rgba(24,102,238,.12); border-color:rgba(24,102,238,.32); border-left-color:var(--msg)}
+  .tele-tag.guard{color:#ff6b7d; background:rgba(239,34,58,.1); border-color:rgba(239,34,58,.3); border-left-color:var(--transit)}
+  .typing{display:inline-flex; gap:4px; padding:11px 15px; background:#22304C; border-radius:18px; border-bottom-left-radius:5px}
+  .typing i{width:6px; height:6px; border-radius:50%; background:var(--faint); animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s} .typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.25; transform:translateY(0)} 30%{opacity:1; transform:translateY(-3px)}}
+  body.hide-telemetry .telemetry{display:none}
+
+  .phone-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center}
+  .btn{font-family:var(--f-mono); font-size:.76rem; padding:9px 15px; border-radius:9px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); cursor:pointer; transition:.18s; display:inline-flex; align-items:center; gap:7px}
+  .btn:hover{border-color:var(--voice); color:#fff}
+  .btn.primary{background:var(--msg); color:#fff; border-color:var(--msg); font-weight:600}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .toggle{display:inline-flex; align-items:center; gap:9px; font-family:var(--f-mono); font-size:.74rem; color:var(--muted); cursor:pointer; user-select:none}
+  .toggle .track{width:38px; height:21px; border-radius:999px; background:var(--msg); position:relative; transition:.2s}
+  .toggle .track::after{content:""; position:absolute; top:2px; left:2px; width:17px; height:17px; border-radius:50%; background:#fff; transition:.2s}
+  body.hide-telemetry .toggle .track{background:var(--line)}
+  body.hide-telemetry .toggle .track::after{left:19px}
+
+  /* legend */
+  .legend{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:34px}
+  .legend .item{display:flex; gap:12px; align-items:flex-start; padding:15px 16px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius-sm)}
+  .swatch{width:14px; height:14px; border-radius:4px; margin-top:4px; flex:none}
+  .legend h4{font-family:var(--f-display); font-size:.95rem; font-weight:600; margin-bottom:2px}
+  .legend p{font-size:.83rem; color:var(--muted)}
+
+  /* journey ribbon */
+  .ribbon{position:relative; margin-top:36px; padding:34px 8px 12px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); overflow-x:auto}
+  .ribbon-track{display:flex; align-items:center; min-width:760px; position:relative}
+  .ribbon-line{position:absolute; left:0; right:0; top:50%; height:3px; background:linear-gradient(90deg,var(--voice),var(--msg) 30%,var(--transit) 70%,var(--msg)); border-radius:3px; opacity:.55}
+  .stop{position:relative; z-index:2; flex:1; display:flex; flex-direction:column; align-items:center; gap:8px}
+  .stop .node{width:20px; height:20px; border-radius:50%; background:var(--ink); border:3px solid var(--transit); box-shadow:0 0 0 4px rgba(11,18,32,.9)}
+  .stop.call .node{border-color:var(--voice); background:var(--voice)}
+  .stop.done .node{border-color:var(--msg); background:var(--msg)}
+  .stop .lbl{font-family:var(--f-mono); font-size:.64rem; color:var(--muted); text-align:center}
+  .stop .date{font-family:var(--f-mono); font-size:.6rem; color:var(--faint)}
+
+  /* ---------- generic cards grid ---------- */
+  .grid{display:grid; gap:16px}
+  .cols-2{grid-template-columns:repeat(2,1fr)} .cols-3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){ .cols-2,.cols-3{grid-template-columns:1fr} }
+  .card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:22px}
+  .card h3{font-family:var(--f-display); font-weight:600; font-size:1.08rem; margin-bottom:8px; display:flex; align-items:center; gap:9px}
+  .card p{font-size:.9rem; color:var(--muted)}
+  .card .k{font-family:var(--f-mono); font-size:.66rem; color:var(--faint); letter-spacing:.08em; text-transform:uppercase}
+
+  /* ---------- voice flow ---------- */
+  .voice-grid{display:grid; grid-template-columns:300px 1fr; gap:26px; margin-top:36px}
+  @media(max-width:820px){ .voice-grid{grid-template-columns:1fr} }
+  .spine{position:relative; padding-left:6px}
+  .vnode{position:relative; display:flex; gap:14px; padding:3px 0 20px; cursor:pointer}
+  .vnode:last-child{padding-bottom:0}
+  .vnode .rail{position:relative; flex:none; width:34px; display:flex; flex-direction:column; align-items:center}
+  .vnode .rail .bead{width:34px; height:34px; border-radius:10px; background:var(--panel-2); border:1px solid var(--line); display:grid; place-items:center; font-family:var(--f-mono); font-size:.72rem; color:var(--muted); transition:.2s; z-index:2}
+  .vnode .rail .wire{position:absolute; top:34px; bottom:-4px; width:2px; background:var(--line); left:50%; transform:translateX(-50%)}
+  .vnode:last-child .rail .wire{display:none}
+  .vnode .vbody{padding-top:5px}
+  .vnode .vt{font-family:var(--f-display); font-weight:600; font-size:.95rem; transition:.2s}
+  .vnode .vp{font-size:.8rem; color:var(--faint)}
+  .vnode:hover .bead{border-color:var(--voice)}
+  .vnode.sel .bead{background:var(--voice); color:var(--ink); border-color:var(--voice); box-shadow:0 0 18px rgba(25,171,243,.5)}
+  .vnode.sel .vt{color:var(--voice)}
+  .vnode.escape .bead{border-color:var(--transit); color:var(--transit)}
+  .vnode.escape.sel .bead{background:var(--transit); color:#fff; box-shadow:0 0 18px rgba(239,34,58,.5)}
+  .vnode.escape.sel .vt{color:var(--transit)}
+  .vnode.human .bead{border-style:dashed}
+
+  .vdetail{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:24px; min-height:340px}
+  .vdetail .vd-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+  .vdetail h3{font-family:var(--f-display); font-weight:600; font-size:1.35rem}
+  .vdetail .vd-purpose{color:var(--muted); font-size:.92rem; margin-bottom:20px}
+  .turn{display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:14px 0; border-top:1px dashed var(--line-soft)}
+  @media(max-width:560px){ .turn{grid-template-columns:1fr} }
+  .turn .who{font-family:var(--f-mono); font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-bottom:6px}
+  .turn .said{background:var(--panel-2); border:1px solid var(--line-soft); border-radius:10px; padding:11px 13px; font-size:.9rem}
+  .turn.sys .said{border-left:2px solid var(--voice)}
+  .turn.usr .said{border-left:2px solid var(--msg)}
+  .turn .ann{font-family:var(--f-mono); font-size:.72rem; color:var(--muted); display:flex; flex-direction:column; gap:6px; justify-content:center}
+  .turn .ann span{border-left:2px solid var(--ai); padding-left:9px; color:var(--ai)}
+  .vd-col-h{font-family:var(--f-mono); font-size:.63rem; letter-spacing:.14em; text-transform:uppercase; color:var(--faint)}
+  .vd-cols{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:2px}
+  @media(max-width:560px){ .vd-cols{display:none} }
+
+  /* ---------- architecture svg ---------- */
+  .arch-wrap{margin-top:34px; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:18px; overflow-x:auto}
+  .arch-wrap svg{display:block; width:100%; min-width:720px; height:auto}
+  .arch-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; font-family:var(--f-mono); font-size:.72rem; color:var(--muted)}
+  .arch-legend b{font-weight:400; display:inline-flex; align-items:center; gap:7px}
+  .arch-legend .ln{width:22px; height:0; border-top:2px solid var(--msg)}
+  .arch-legend .ln.dash{border-top-style:dashed; border-color:var(--faint)}
+
+  /* ---------- state machine ---------- */
+  .sm-wrap{margin-top:34px}
+  .sm-track{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:26px 20px; overflow-x:auto}
+  .sm-row{display:flex; align-items:center; min-width:720px; gap:0}
+  .sm-state{flex:1; display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; cursor:pointer; padding:4px}
+  .sm-state .sc{width:46px; height:46px; border-radius:14px; border:2px solid var(--line); background:var(--panel-2); display:grid; place-items:center; font-family:var(--f-mono); font-size:1.1rem; color:var(--muted); transition:.25s}
+  .sm-state .sl{font-family:var(--f-mono); font-size:.66rem; color:var(--muted); max-width:12ch}
+  .sm-state.active .sc{background:var(--msg); color:#fff; border-color:var(--msg); box-shadow:0 0 22px rgba(24,102,238,.55); transform:scale(1.06)}
+  .sm-state.active .sl{color:var(--msg)}
+  .sm-state.past .sc{border-color:var(--msg); color:var(--msg)}
+  .sm-conn{flex:none; width:34px; height:2px; background:var(--line); position:relative}
+  .sm-conn.past{background:var(--msg)}
+  .sm-panel{margin-top:20px; display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start}
+  @media(max-width:820px){ .sm-panel{grid-template-columns:1fr} }
+  .sm-info{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:22px}
+  .sm-info h3{font-family:var(--f-display); font-weight:600; font-size:1.25rem; margin-bottom:4px}
+  .sm-info .trig{font-family:var(--f-mono); font-size:.7rem; color:var(--transit); margin-bottom:12px}
+  .sm-info .quote{background:var(--panel-2); border:1px solid var(--line-soft); border-left:2px solid var(--msg); border-radius:10px; padding:13px 15px; font-size:.9rem; margin-top:12px}
+  .sm-info .quote .lbl{font-family:var(--f-mono); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); display:block; margin-bottom:5px}
+  .sm-controls{display:flex; gap:10px; margin-top:18px; align-items:center; flex-wrap:wrap}
+  .branches .card{padding:16px; margin-bottom:12px}
+  .branches h3{font-size:.98rem} .branches .card p{font-size:.82rem}
+  .branch-tag{font-family:var(--f-mono); font-size:.62rem; color:#ff6b7d; border:1px solid rgba(239,34,58,.42); background:rgba(239,34,58,.1); padding:2px 8px; border-radius:999px}
+
+  /* operators */
+  .op{display:flex; flex-direction:column; gap:10px}
+  .op .op-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .op .badge{font-family:var(--f-mono); font-size:.6rem; padding:3px 7px; border-radius:5px; letter-spacing:.05em}
+  .badge.tw{background:rgba(25,171,243,.12); color:var(--voice); border:1px solid rgba(25,171,243,.32)}
+  .badge.cust{background:rgba(24,102,238,.14); color:#5aa6ff; border:1px solid rgba(24,102,238,.34)}
+  .badge.trg{background:rgba(239,34,58,.1); color:#ff6b7d; border:1px solid rgba(239,34,58,.3)}
+
+  /* curveballs */
+  .cb{cursor:pointer; transition:.2s}
+  .cb:hover{border-color:var(--transit)}
+  .cb .cb-head{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .cb h3{margin-bottom:0}
+  .cb .plus{font-family:var(--f-mono); color:var(--transit); font-size:1.3rem; transition:.25s; flex:none}
+  .cb.open .plus{transform:rotate(45deg)}
+  .cb-body{max-height:0; overflow:hidden; transition:max-height .35s ease; }
+  .cb.open .cb-body{max-height:400px}
+  .cb-body .inner{padding-top:14px; margin-top:14px; border-top:1px dashed var(--line-soft); display:flex; flex-direction:column; gap:10px}
+  .cb-body .row{display:flex; gap:10px; font-size:.86rem}
+  .cb-body .row .rk{font-family:var(--f-mono); font-size:.64rem; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); flex:none; width:78px; padding-top:2px}
+  .cb-body .guard{color:var(--transit)}
+
+  /* mapping table */
+  .maptable{width:100%; border-collapse:collapse; margin-top:28px; font-size:.88rem}
+  .maptable th,.maptable td{text-align:left; padding:12px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  .maptable th{font-family:var(--f-mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:400}
+  .maptable td:first-child{color:var(--text)}
+  .maptable td .prod{font-family:var(--f-display); font-weight:600; color:var(--voice)}
+  .maptable tr:hover td{background:var(--panel)}
+
+  /* ---------- the conversation designer ---------- */
+  .subhead{font-family:var(--f-mono); font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); margin:40px 0 6px}
+  .kicker-cards{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:8px}
+  @media(max-width:900px){ .kicker-cards{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:520px){ .kicker-cards{grid-template-columns:1fr} }
+  .pcard{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius); padding:20px}
+  .pcard .idx{font-family:var(--f-mono); font-size:.72rem; color:var(--ai); letter-spacing:.12em}
+  .pcard h3{font-family:var(--f-display); font-weight:600; font-size:1.02rem; margin:11px 0 9px; line-height:1.18}
+  .pcard p{font-size:.85rem; color:var(--muted)}
+  .pcard .tiein{margin-top:13px; font-family:var(--f-mono); font-size:.67rem; color:var(--faint)}
+  .pcard .tiein b{color:var(--msg); font-weight:400}
+
+  .amap{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px}
+  @media(max-width:820px){ .amap{grid-template-columns:1fr 1fr} }
+  @media(max-width:520px){ .amap{grid-template-columns:1fr} }
+  .amap a{display:flex; flex-direction:column; gap:8px; text-decoration:none; color:inherit; background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:16px; transition:.2s}
+  .amap a:hover{border-color:var(--voice); transform:translateY(-2px)}
+  .amap a:focus-visible{outline:2px solid var(--voice); outline-offset:2px}
+  .amap .an{font-family:var(--f-display); font-weight:600; font-size:.98rem}
+  .amap .ad{font-size:.81rem; color:var(--muted); flex:1}
+  .amap .jump{font-family:var(--f-mono); font-size:.68rem; color:var(--voice)}
+
+  .lifecycle{display:grid; grid-template-columns:1fr auto 1fr; margin-top:16px; border:1px solid var(--line-soft); border-radius:var(--radius); overflow:hidden}
+  @media(max-width:700px){ .lifecycle{grid-template-columns:1fr} }
+  .lc-phase{padding:22px}
+  .lc-phase.design{background:linear-gradient(180deg,rgba(25,171,243,.10),transparent 70%)}
+  .lc-phase.run{background:linear-gradient(180deg,rgba(24,102,238,.10),transparent 70%)}
+  .lc-phase h4{font-family:var(--f-display); font-weight:600; font-size:1rem; margin-bottom:2px}
+  .lc-phase.design h4{color:var(--voice)} .lc-phase.run h4{color:var(--msg)}
+  .lc-phase .role{font-family:var(--f-mono); font-size:.66rem; color:var(--faint); margin-bottom:14px}
+  .lc-step{display:flex; gap:11px; align-items:flex-start; font-size:.85rem; color:var(--muted); padding:5px 0}
+  .lc-step .n{font-family:var(--f-mono); font-size:.66rem; flex:none; margin-top:3px}
+  .lc-phase.design .lc-step .n{color:var(--voice)} .lc-phase.run .lc-step .n{color:var(--msg)}
+  .lc-divider{display:flex; align-items:center; justify-content:center; padding:8px; border-inline:1px dashed var(--line)}
+  .lc-divider span{writing-mode:vertical-rl; transform:rotate(180deg); font-family:var(--f-mono); font-size:.66rem; letter-spacing:.2em; text-transform:uppercase; color:var(--transit)}
+  @media(max-width:700px){ .lc-divider{border-inline:none; border-block:1px dashed var(--line)} .lc-divider span{writing-mode:horizontal-tb; transform:none} }
+  .lc-caption{margin-top:15px; font-size:.86rem; color:var(--muted); max-width:80ch}
+
+  .roles{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px}
+  @media(max-width:820px){ .roles{grid-template-columns:1fr 1fr} }
+  @media(max-width:520px){ .roles{grid-template-columns:1fr} }
+  .role-card{background:var(--panel); border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:17px}
+  .role-card .rn{font-family:var(--f-display); font-weight:600; font-size:.95rem}
+  .role-card .ro{font-size:.8rem; color:var(--muted); margin:6px 0 10px}
+  .role-card .hand{font-family:var(--f-mono); font-size:.68rem; color:var(--faint); border-top:1px dashed var(--line-soft); padding-top:10px}
+  .role-card .hand b{color:var(--ai); font-weight:400}
+  .role-card.center{background:linear-gradient(155deg,rgba(239,34,58,.16),var(--panel) 72%); border-color:rgba(239,34,58,.45)}
+  .role-card.center .rn{color:var(--transit)}
+  .role-card.center .hand b{color:var(--transit)}
+
+  .pullquote{margin-top:34px; padding:24px 28px; border-left:3px solid var(--ai); background:var(--panel); border-radius:0 var(--radius) var(--radius) 0; font-family:var(--f-display); font-weight:500; font-size:clamp(1.05rem,2vw,1.35rem); line-height:1.42}
+  .pullquote b{color:var(--transit)}
+  .pullquote .src{display:block; margin-top:13px; font-family:var(--f-mono); font-weight:400; font-size:.72rem; color:var(--faint); letter-spacing:.03em}
+  .sources{margin-top:28px; font-family:var(--f-mono); font-size:.72rem; color:var(--faint); line-height:2}
+  .sources a{color:var(--muted); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px}
+  .sources a:hover{color:var(--voice)}
+
+  footer{padding:48px 0 60px; border-top:1px solid var(--line-soft); color:var(--faint); font-family:var(--f-mono); font-size:.76rem}
+  footer .wrap{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important; scroll-behavior:auto !important}
+    .reveal{opacity:1; transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand"><img class="bug" src="data:image/png;base64,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" width="26" height="26" alt="Twilio"><span class="wordmark">twilio</span><span class="brand-sep"></span><span class="brand-proj">Consolidation Concierge</span></div>
+    <nav class="nav-links" id="navlinks">
+      <a href="#hero">Overview</a>
+      <a href="#read">Legend</a>
+      <a href="#designer">Designer</a>
+      <a href="#voice">Voice</a>
+      <a href="#arch">Architecture</a>
+      <a href="#engine">Async</a>
+      <a href="#intel">Intelligence</a>
+      <a href="#curve">Curveballs</a>
+      <a href="#build">Build map</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section id="hero">
+  <div class="wrap">
+    <span class="eyebrow">Conversation Design Document · v0.1</span>
+    <div class="hero-grid">
+      <div>
+        <h1 class="h1">Human kickoff.<br><span class="grad">AI concierge.</span><br>One memory.</h1>
+        <p class="hero-sub">A customer consolidates an HSA and a 401(k) into Fidelity. They call once, are verified fast, and hand off to a human the moment it matters — then the transfers become a three-week, proactively-managed journey in messaging. This is the flow a conversation designer built beneath it.</p>
+        <div class="tenets">
+          <span class="chip msg">verify once, remember forever</span>
+          <span class="chip transit">proactive &gt; reactive</span>
+          <span class="chip voice">always name the human</span>
+          <span class="chip ai">never ask for secrets on the wrong channel</span>
+          <span class="chip">always offer a way out</span>
+        </div>
+        <div class="meta-row">
+          <span><b>Spine</b> · Voice inbound</span>
+          <span><b>Tail</b> · RCS → SMS</span>
+          <span><b>Platform</b> · Twilio</span>
+          <span><b>Journey</b> · Jun 26 → Jul 21</span>
+        </div>
+      </div>
+
+      <div class="phone-stage">
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="p-head">
+              <div class="p-avatar">F</div>
+              <div class="p-name">Fidelity · your specialist <span>+1 (800) 756-0128 · not for marketing</span></div>
+            </div>
+            <div class="thread" id="thread"></div>
+          </div>
+        </div>
+        <div class="phone-controls">
+          <button class="btn primary" id="playBtn">▶ Play journey</button>
+          <button class="btn" id="restartBtn">↺ Restart</button>
+          <label class="toggle" id="teleToggle" title="Toggle the designer's telemetry layer">
+            <span class="track"></span> system telemetry
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STAT BAND ================= -->
+<div class="statband">
+  <div class="wrap">
+    <div class="stat"><span class="num">4 min</span><span class="lbl">First call, start to finish</span></div>
+    <div class="stat"><span class="num">3 wks</span><span class="lbl">Proactively managed</span></div>
+    <div class="stat"><span class="num">0</span><span class="lbl">Times re-verified</span></div>
+    <div class="stat"><span class="num">1</span><span class="lbl">Memory across channels</span></div>
+  </div>
+</div>
+
+<!-- ================= HOW TO READ ================= -->
+<section id="read">
+  <div class="wrap">
+    <span class="eyebrow">How to read this</span>
+    <h2 class="section-title">Two layers, one conversation</h2>
+    <p class="lede">Everything the <b>customer sees</b> sits on top of what the <b>designer specified</b>: identity checks, memory writes, intelligence flags, and state transitions. Flip “system telemetry” on the phone to reveal the layer underneath. Color carries meaning everywhere on this page:</p>
+    <div class="legend">
+      <div class="item"><span class="swatch" style="background:var(--voice)"></span><div><h4>Voice</h4><p>Inbound calls, ASR/TTS, the verification + kickoff spine.</p></div></div>
+      <div class="item"><span class="swatch" style="background:var(--msg)"></span><div><h4>Messaging</h4><p>RCS &amp; SMS follow-up, verified identity, transfers reaching “posted.”</p></div></div>
+      <div class="item"><span class="swatch" style="background:var(--transit)"></span><div><h4>In motion / attention</h4><p>Money in transit, guardrails, curveballs that need care.</p></div></div>
+      <div class="item"><span class="swatch" style="background:var(--ai)"></span><div><h4>Intelligence</h4><p>Memory writes, operators, and everything the AI layer does silently.</p></div></div>
+    </div>
+
+    <div class="ribbon" aria-label="Journey timeline">
+      <div class="ribbon-track">
+        <div class="ribbon-line"></div>
+        <div class="stop call"><span class="node"></span><span class="lbl">Inbound call<br>verify + kickoff</span><span class="date">Jun 26</span></div>
+        <div class="stop"><span class="node"></span><span class="lbl">HSA paperwork sent</span><span class="date">Jul 1</span></div>
+        <div class="stop"><span class="node"></span><span class="lbl">Concierge calls provider</span><span class="date">Jul 7</span></div>
+        <div class="stop"><span class="node"></span><span class="lbl">Check mailed · in transit</span><span class="date">Jul 8</span></div>
+        <div class="stop done"><span class="node"></span><span class="lbl">401(k) posted</span><span class="date">Jul 10</span></div>
+        <div class="stop done"><span class="node"></span><span class="lbl">Bring it all home</span><span class="date">Jul 21</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= THE CONVERSATION DESIGNER ================= -->
+<section id="designer">
+  <div class="wrap">
+    <span class="eyebrow" style="color:var(--msg)">The human behind the flow</span>
+    <h2 class="section-title">What the conversation designer did</h2>
+    <p class="lede">Conversation design is a craft, not a script — “a synthesis of voice UI, interaction, visual, motion and audio design, and UX writing,” practiced by someone who works as an <b>architect</b>: mapping what a person can do in the space and curating the flows and logic beneath it. Everything above is their output. Here’s how they think, what they produced, and where they sit in an AI-run contact center.</p>
+
+    <div class="subhead">How a conversation designer thinks</div>
+    <div class="kicker-cards" id="cdPrinciples"></div>
+
+    <div class="subhead">What they produced — and where it lives here</div>
+    <p class="lede" style="font-size:.95rem">Each of these is a standard conversation-design deliverable. Tap one to jump to it in this document.</p>
+    <div class="amap" id="cdArtifacts"></div>
+
+    <div class="subhead">Where they fit: design-time and run-time</div>
+    <div class="lifecycle">
+      <div class="lc-phase design">
+        <h4>◐ Design-time</h4><div class="role">the designer leads</div>
+        <div id="lcDesign"></div>
+      </div>
+      <div class="lc-divider"><span>launch</span></div>
+      <div class="lc-phase run">
+        <h4>◑ Run-time</h4><div class="role">the designer curates</div>
+        <div id="lcRun"></div>
+      </div>
+    </div>
+    <p class="lc-caption">In an AI contact center the loop never closes. The designer reads what Conversation Intelligence surfaces on live traffic — sentiment dips, escalations, off-script moments, unresolved intents — and feeds the long tail back into sample dialogs, prompts, and flows. Design is continuous, not a launch event.</p>
+
+    <div class="subhead">Who they work with</div>
+    <div class="roles" id="cdRoles"></div>
+
+    <div class="pullquote">The strongest conversation designers become a “triple threat” — conversation &amp; AI design, product &amp; UX, and product thinking — and get genuinely comfortable designing for the <b>probabilistic</b>, where a model’s output is never fully knowable in advance.
+      <span class="src">— synthesized from practitioner guidance on growing in the field</span>
+    </div>
+
+    <div class="sources">
+      Sources ·
+      <a href="https://developers.google.com/assistant/conversation-design/what-is-conversation-design" target="_blank" rel="noopener">Google — What is Conversation Design</a> ·
+      <a href="https://www.conversationdesigninstitute.com/blog/career-paths-in-conversational-ai-and-generative-ai" target="_blank" rel="noopener">Conversation Design Institute — Career paths</a> ·
+      <a href="https://www.dimensionlabs.io/blog/conversation-designer" target="_blank" rel="noopener">Dimension Labs — The Conversation Designer</a> ·
+      <a href="https://uxplanet.org/growing-as-a-conversation-designer-08e81900e392" target="_blank" rel="noopener">UX Planet — Growing as a Conversation Designer</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VOICE SPINE ================= -->
+<section id="voice">
+  <div class="wrap">
+    <span class="eyebrow" style="color:var(--voice)">The spine · voice-first</span>
+    <h2 class="section-title">The inbound call, step by step</h2>
+    <p class="lede">One call: recognize, verify to a tier we can act on, capture intent, and either proceed or hand to a human — with the “just connect me to an agent” escape hatch as a <b>designed path</b>, not a dead end. Select a step to see what the caller hears and what the system does.</p>
+    <div class="voice-grid">
+      <div class="spine" id="spine"></div>
+      <div class="vdetail" id="vdetail"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ARCHITECTURE ================= -->
+<section id="arch">
+  <div class="wrap">
+    <span class="eyebrow" style="color:var(--msg)">Platform layer</span>
+    <h2 class="section-title">One thread across every channel</h2>
+    <p class="lede">Conversation Orchestrator captures voice, RCS, and SMS into a single thread per customer (<span class="chip ai" style="font-size:.68rem">GROUP_BY_PROFILE</span>). Memory carries identity and context; Intelligence analyzes every turn; TaskRouter routes the judgment moments to a human — who arrives already knowing the customer.</p>
+    <div class="arch-wrap">
+      <svg viewBox="0 0 760 380" role="img" aria-label="Architecture diagram">
+        <defs>
+          <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1866EE"/></marker>
+          <marker id="arAi" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#7E869C"/></marker>
+          <style>
+            .box{fill:#122247; stroke:#20305A; rx:12}
+            .lbl{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-weight:700; fill:#FFFFFF; font-size:14px}
+            .sub{font-family:ui-monospace,Menlo,monospace; fill:#9AA0B4; font-size:9.5px}
+            .flow{stroke:#1866EE; stroke-width:2; fill:none; marker-end:url(#ar)}
+            .flowAi{stroke:#7E869C; stroke-width:1.6; fill:none; stroke-dasharray:4 4; marker-end:url(#arAi)}
+          </style>
+        </defs>
+
+        <!-- customer channels -->
+        <rect class="box" x="12" y="40" width="150" height="54" rx="12"/>
+        <text class="lbl" x="30" y="64">📞 Caller</text><text class="sub" x="30" y="80">toll-free voice</text>
+        <rect class="box" x="12" y="150" width="150" height="54" rx="12"/>
+        <text class="lbl" x="30" y="174">💬 RCS</text><text class="sub" x="30" y="190">rich follow-up</text>
+        <rect class="box" x="12" y="260" width="150" height="54" rx="12"/>
+        <text class="lbl" x="30" y="284">✉ SMS</text><text class="sub" x="30" y="300">fallback</text>
+
+        <!-- relay -->
+        <rect class="box" x="220" y="40" width="170" height="54" rx="12" style="stroke:#19ABF3"/>
+        <text class="lbl" x="238" y="64" style="fill:#19ABF3">ConversationRelay</text><text class="sub" x="238" y="80">ASR · TTS · WebSocket</text>
+
+        <!-- orchestrator (hub) -->
+        <rect class="box" x="300" y="160" width="170" height="60" rx="12" style="stroke:#EF223A;stroke-width:2"/>
+        <text class="lbl" x="318" y="185" style="fill:#EF223A">Orchestrator</text><text class="sub" x="318" y="202">GROUP_BY_PROFILE</text>
+
+        <!-- app/llm -->
+        <rect class="box" x="470" y="40" width="150" height="54" rx="12"/>
+        <text class="lbl" x="488" y="64">App + LLM</text><text class="sub" x="488" y="80">your logic</text>
+
+        <!-- memory / intel / knowledge -->
+        <rect class="box" x="560" y="150" width="180" height="54" rx="12"/>
+        <text class="lbl" x="578" y="174">Conversation Memory</text><text class="sub" x="578" y="190">profile · traits · recall</text>
+        <rect class="box" x="560" y="228" width="180" height="54" rx="12"/>
+        <text class="lbl" x="578" y="252">Intelligence</text><text class="sub" x="578" y="268">operators · sentiment</text>
+
+        <!-- human -->
+        <rect class="box" x="300" y="300" width="170" height="54" rx="12" style="stroke:#1866EE"/>
+        <text class="lbl" x="318" y="324" style="fill:#1866EE">TaskRouter → Human</text><text class="sub" x="318" y="340">warm handoff · context pop</text>
+
+        <!-- flows -->
+        <path class="flow" d="M162 67 L216 67"/>
+        <path class="flow" d="M390 67 L466 67"/>
+        <path class="flow" d="M545 94 C560 130, 430 130, 388 165"/>
+        <path class="flow" d="M162 177 C230 177, 250 185, 296 188"/>
+        <path class="flow" d="M162 287 C240 287, 250 220, 300 205"/>
+        <path class="flowAi" d="M470 190 L556 178"/>
+        <path class="flowAi" d="M470 205 C520 235, 540 250, 556 252"/>
+        <path class="flow" d="M385 220 L385 296"/>
+        <path class="flowAi" d="M560 232 C500 210, 460 205, 472 200"/>
+      </svg>
+      <div class="arch-legend">
+        <b><span class="ln"></span> conversation traffic</b>
+        <b><span class="ln dash"></span> context: memory + intelligence</b>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ASYNC ENGINE ================= -->
+<section id="engine">
+  <div class="wrap">
+    <span class="eyebrow" style="color:var(--msg)">The tail · proactive follow-up</span>
+    <h2 class="section-title">The transfer state machine</h2>
+    <p class="lede">The magic lives in the weeks after the call. Each transfer walks a state machine; every transition fires a proactive, human-toned update. Step through it — watch the message the customer receives and the guardrails behind it.</p>
+    <div class="sm-wrap">
+      <div class="sm-track"><div class="sm-row" id="smRow"></div></div>
+      <div class="sm-panel">
+        <div class="sm-info" id="smInfo"></div>
+        <div class="branches">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="branch-tag">branch</span><h3>Rejected</h3></div>
+            <p>Missing medallion signature → pair the problem with the next concrete action, re-send the form, loop back to <b>Initiated</b>. Repeat rejection → human.</p>
+          </div>
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="branch-tag">branch</span><h3>Reissue</h3></div>
+            <p>Check exceeds the transit window → detect the stall proactively, start stop-payment + reissue, keep the customer posted. No action needed from them.</p>
+          </div>
+        </div>
+      </div>
+      <div class="sm-controls">
+        <button class="btn" id="smPrev">← Prev</button>
+        <button class="btn primary" id="smNext">Next state →</button>
+        <span class="chip" id="smCount"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= INTELLIGENCE ================= -->
+<section id="intel">
+  <div class="wrap">
+    <span class="eyebrow" style="color:var(--msg)">The intelligence layer</span>
+    <h2 class="section-title">Operators watching every turn</h2>
+    <p class="lede">Attached to the conversation, operators run per-message or at close — measuring sentiment, catching PII sent over text, extracting transfer status, and flagging the “5 minutes of yelling” moment before it happens.</p>
+    <div class="grid cols-3" id="opGrid"></div>
+  </div>
+</section>
+
+<!-- ================= CURVEBALLS ================= -->
+<section id="curve">
+  <div class="wrap">
+    <span class="eyebrow" style="color:var(--transit)">The real magic</span>
+    <h2 class="section-title">Designing for what goes sideways</h2>
+    <p class="lede">A believable product handles the exceptions gracefully. Each of these is a designed sub-flow with a trigger, a path, and a guardrail. Tap to expand.</p>
+    <div class="grid cols-2" id="cbGrid" style="margin-top:32px"></div>
+  </div>
+</section>
+
+<!-- ================= BUILD MAP ================= -->
+<section id="build">
+  <div class="wrap">
+    <span class="eyebrow">Design → build</span>
+    <h2 class="section-title">What each piece maps to</h2>
+    <p class="lede">The handoff table: every design element and the Twilio surface that carries it.</p>
+    <table class="maptable">
+      <thead><tr><th>Design element</th><th>Product</th><th>Key configuration</th></tr></thead>
+      <tbody id="mapBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Account Consolidation Concierge — conversation design demo</span>
+    <span>Voice-first · curveballs · verify-once · name the human</span>
+  </div>
+</footer>
+
+<script>
+/* ============================ DATA ============================ */
+const messages = [
+  { side:'in', day:'Fri, Jun 26 · 9:10 AM', text:"Hi Daniel — this is your Fidelity specialist. This number won't be used for marketing. Reply STOP to opt out. Please don't share your SSN, account numbers, or DOB by text.", tele:[{t:'compliance: opening disclosure ✓',c:'state'},{t:'guardrail: PII-over-text banned',c:'guard'}] },
+  { side:'in', text:"You can text me here, or call my direct line — Mon–Fri 8:30–5:00 ET.", tele:[{t:'tenet: always offer a way out',c:''}] },
+  { side:'in', day:'Wed, Jul 1', text:"Good morning Daniel — your HSA paperwork went to Health Equity. Usually 1–2 business days, then processing. I'll follow up on 7/7. 🙂", tele:[{t:'state → HSA: Initiated',c:'state'},{t:'schedule: proactive follow-up 7/7',c:''}] },
+  { side:'in', day:'Thu, Jul 2', text:"Quick check on the 401(k) rollover — was your old plan able to mail you the check?", tele:[{t:'proactive check-in (no prompt needed)',c:''}] },
+  { side:'out', text:"Got the checks yesterday — I'll forward them next week. Thanks for checking in.", tele:[{t:'intel: sentiment = positive',c:''},{t:'memory: 401(k) → InTransit',c:'state'}] },
+  { side:'in', day:'Mon, Jul 6', text:"Awesome, thank you for keeping me posted! I'll watch for them to arrive here.", tele:[] },
+  { side:'in', day:'Tue, Jul 7', text:"Good morning Daniel! I called Health Equity and spoke with Mrs. Kaye — your paperwork's in order, the account closes and a check mails 7/10, arriving in ~5–10 business days.", tele:[{t:'state → HSA: CheckMailed',c:'state'},{t:'tenet: name the human ("Mrs. Kaye")',c:''}] },
+  { side:'out', text:"Mailed my Human Interest check to the address on the website. Appreciate the follow-ups.", tele:[{t:'memory: 401(k) mailing confirmed',c:''}] },
+  { side:'in', day:'Wed, Jul 8', text:"Thank you! I'll monitor for receipt. Mind confirming the address you mailed to, so it routes correctly?", tele:[{t:'curveball guard: address-mismatch check',c:'guard'},{t:'step-up required if address changes',c:'guard'}] },
+  { side:'in', day:'Fri, Jul 10', text:"Good morning Daniel! Your rollover contributions have posted. My view's a little limited so tell me if that's not what you see. Still watching the HSA.", tele:[{t:'state → 401(k): Posted',c:'state'},{t:'operator: resolution = partial',c:''}] },
+  { side:'out', day:'Mon, Jul 20', text:"Saw the 401k posted. HSA hasn't shown in Fidelity yet but Health Equity's been emptied — probably a week or two. No rush.", tele:[{t:'intel: sentiment = positive',c:''},{t:'memory: HSA → InTransit',c:'state'}] },
+  { side:'in', day:'Tue, Jul 21', text:"That's the last leg — I'll confirm the moment the HSA lands. It's been a pleasure helping you bring it all home. 🎉", tele:[{t:'state → Complete (pending HSA)',c:'state'},{t:'summary written → Memory',c:''}] },
+];
+
+const vnodes = [
+  { id:'V0', title:'Answer & greet', purpose:'Recognize the caller from their number and set a warm tone — without yet authorizing any action.', cls:'',
+    turns:[{who:'System', kind:'sys', said:"Thanks for calling Fidelity. I can see you're calling from a number tied to Daniel R. — are you calling about the transfers you have in progress?", ann:['Lookup + Memory profile match','Recall → recent summaries','assurance: Tier 0 (recognized)']},
+           {who:'Caller', kind:'usr', said:"Yeah, exactly.", ann:[]}]},
+  { id:'V1', title:'Authenticate', purpose:'Reach Tier 1 with knowledge-based verification — and neutralize the keypad-password trap up front.', cls:'',
+    turns:[{who:'System', kind:'sys', said:"For your security I'll confirm a couple details. I'll never ask for your full Social, your password, or anything you'd type on the keypad. Can you confirm your date of birth and account ZIP?", ann:['banned: password-as-keypad-digits','signals safety explicitly']},
+           {who:'Caller', kind:'usr', said:"6/14/1985, 02141.", ann:['intel: PII spoken → redact in transcript','memory: Verification{tier:1, exp:30d}']}]},
+  { id:'ESC', title:'"Connect me to an agent"', purpose:'The escape hatch is a first-class path. It works on the first try, at any step, and carries full context.', cls:'escape',
+    turns:[{who:'Caller', kind:'usr', said:"Just connect me to an agent.", ann:[]},
+           {who:'System', kind:'sys', said:"Absolutely — connecting you now. I'll pass along who you are and what you're working on so you won't have to repeat yourself.", ann:['no penalty, no loop','context travels → V6']}]},
+  { id:'V2', title:'Intent capture', purpose:'Understand what the caller actually needs, in their words.', cls:'',
+    turns:[{who:'System', kind:'sys', said:"What can I help you with today?", ann:[]},
+           {who:'Caller', kind:'usr', said:"I'm trying to move my HSA and my old 401k over but the outside accounts won't link online.", ann:['intent: consolidate_accounts','entities: HSA, 401k · Health Equity, Human Interest']}]},
+  { id:'V4', title:'Transfer kickoff', purpose:'Identify accounts, providers, and method — then initiate the transfers.', cls:'',
+    turns:[{who:'System', kind:'sys', said:"I can get both moving. The HSA I'll start on our side. The 401(k) is a rollover — typically a mailed check. I'll text you a step-by-step so you have it in writing.", ann:['memory: Consolidation{transfers[]}','money-move at Tier 1 (like-to-like)']},
+           {who:'Caller', kind:'usr', said:"Not requested yet — sounds good.", ann:['address change later → Tier-2 step-up']}]},
+  { id:'V5', title:'Expectation-set + opt-in', purpose:'Set a realistic timeline and confirm the proactive-update channel.', cls:'',
+    turns:[{who:'System', kind:'sys', said:"HSA transfers take a couple weeks; the 401(k) check 5–10 business days. I'll text you updates so you don't have to call back. Is this number good for text?", ann:['tenet: set expectations, then beat them']},
+           {who:'Caller', kind:'usr', said:"Yes, text is perfect.", ann:['memory: Preferences{channel:RCS, proactive:true}','consent logged for compliance']}]},
+  { id:'V6', title:'Warm human handoff', purpose:'When judgment is required, route to a specialist who arrives with full context.', cls:'human',
+    turns:[{who:'System', kind:'sys', said:"Connecting you to a specialist — they can see everything we've covered.", ann:['TaskRouter: skills + tier + sentiment','context pop: identity, transfers, last summary']},
+           {who:'Specialist', kind:'usr', said:"Hi Daniel — I see your HSA and 401(k) transfers in progress. Let's take it from here.", ann:['same Memory thread continues','promises made → drive async engine']}]},
+  { id:'V7', title:'Wrap & close', purpose:'Recap, confirm the follow-up, and close the conversation — which arms the async engine.', cls:'',
+    turns:[{who:'System', kind:'sys', said:"You're all set. HSA is started, 401(k) instructions are on the way by text, and I'll proactively update you as each one moves.", ann:[]},
+           {who:'Caller', kind:'usr', said:"Nope, thank you!", ann:['conversation CLOSED','→ Memory extraction + Summary operator','→ async follow-up engine armed']}]},
+];
+
+const states = [
+  { key:'Initiated', icon:'①', trig:'trigger · paperwork submitted on the call', desc:'Paperwork is on its way to the delivering institution. We set the expectation and schedule the first proactive check-in.', msg:"Good morning Daniel — your HSA paperwork went to Health Equity. Usually 1–2 business days, then processing. I'll follow up on 7/7." },
+  { key:'Processing', icon:'②', trig:'trigger · concierge outreach or provider webhook', desc:'The other institution has the paperwork in good order. Naming the human we spoke to is what builds trust here.', msg:"I called Health Equity and spoke with Mrs. Kaye — your paperwork's in order and the account will close shortly." },
+  { key:'Check mailed', icon:'③', trig:'trigger · provider status / concierge call', desc:'Funds are leaving the delivering account. We tell the customer exactly what to expect and when.', msg:"The delivering account closes and a check mails 7/10, arriving in ~5–10 business days." },
+  { key:'In transit', icon:'④', trig:'trigger · customer confirms mailing', desc:'Money is moving and invisible — the highest-anxiety window. We reassure and remove any burden.', msg:"Thanks for the update! I'll monitor for the funds here — usually 5–10 business days. No action needed from you." },
+  { key:'Posted', icon:'⑤', trig:'trigger · Fidelity posting event', desc:'Funds have landed and posted. We confirm proactively and stay honest about our limited view.', msg:"Good news — your 401(k) rollover has posted. I'm still watching for the HSA from Health Equity." },
+  { key:'Complete', icon:'✓', trig:'trigger · all transfers reconciled', desc:'Everything is home. We close the loop warmly and leave the door open.', msg:"That's everything, Daniel — HSA and 401(k) are both home at Fidelity. It was a pleasure helping you bring it all home. 🎉" },
+];
+
+const operators = [
+  { name:'Sentiment', badge:'tw', trig:'COMMUNICATION', desc:'Tracks anxiety and frustration across the multi-week thread; feeds tone adaptation and escalation.' },
+  { name:'Summary', badge:'tw', trig:'CONVERSATION_END', desc:'Writes a durable relationship summary back to Memory at close.' },
+  { name:'Script Adherence', badge:'tw', trig:'CONVERSATION_END', desc:'Was the disclosure given? Was PII-over-text refused? Compliance scoring for QA.' },
+  { name:'Escalation Risk', badge:'cust', trig:'COMMUNICATION', desc:'Custom classifier — catches the "5 minutes of yelling" moment early and routes to a human.' },
+  { name:'PII-in-text detector', badge:'cust', trig:'COMMUNICATION', desc:'Custom classifier — flags a customer sending an SSN/DOB over text, auto-redacts, and coaches gently.' },
+  { name:'Transfer-status extractor', badge:'cust', trig:'COMMUNICATION', desc:'Custom JSON operator — pulls {provider, status, date} to advance the state machine automatically.' },
+];
+
+const curveballs = [
+  { t:'Transfer rejected', tag:'missing medallion signature', trigger:'Provider status = rejected, or the status extractor flags it.', path:'Pair the problem with the next concrete action — explain the medallion guarantee, offer two nearby ways to get one, re-send the form. Remediation loops back to Initiated.', guard:'Never blame the customer. Repeat rejection → human (escalation-risk usually fires here).' },
+  { t:'Address mismatch', tag:'"what address did you mail to?"', trigger:'Customer says they mailed a check; concierge confirms the destination.', path:'Compare to system of record. Match → reassure. Mismatch → step-up, then correct: "That routes to an old lockbox — here\'s the right one."', guard:'Confirming/changing a mailing destination is money-adjacent → Tier-2 step-up required. Never accept a new address over text without it.' },
+  { t:'Market-volatility reassurance', tag:'"markets dropped — is my rollover ok?"', trigger:'reassurance_market intent, or sentiment dips after a market-news day.', path:'Reassure on mechanics: funds in transit aren\'t invested during the move, so day-to-day swings don\'t change the amount. Offer a licensed specialist for investment choices.', guard:'No advice. Reassure on mechanics, never markets. Any "what should I invest in" → licensed human.' },
+  { t:'Mid-journey opt-out (STOP)', tag:'transactional, not marketing', trigger:'opt_out / "STOP".', path:'Honor immediately. Confirm, preserve the voice channel, offer a call for the rest of the transfer, and allow START to resume.', guard:'Never message that channel again post-STOP. Do not treat opt-out as journey abandonment; log to Memory + suppression.' },
+  { t:'Lost / expired check', tag:'proactive stall detection', trigger:'In-transit exceeds the expected window, or the customer reports non-arrival.', path:'Start a stop-payment and reissue with the provider; keep the customer posted with named callbacks.', guard:'Detect the stall proactively (scheduled check vs. expected-by) rather than waiting for the customer to notice.' },
+];
+
+const mapping = [
+  ['Inbound voice · ASR/TTS · barge-in','ConversationRelay','&lt;Connect&gt;&lt;ConversationRelay&gt;; stream tokens; honor interrupt/dtmf; BYO LLM'],
+  ['One thread across channels','Conversation Orchestrator','GROUP_BY_PROFILE; active TwiML voice (no passive capture); passive RCS/SMS'],
+  ['Verify-once identity + history','Conversation Memory','Store → Profile → trait groups; Recall at contact start'],
+  ['Sentiment / summary / compliance','Conversation Intelligence','Twilio + custom operators; memory + knowledge context'],
+  ['OTP / step-up','Verify','Tier-2 gate on money or PII actions'],
+  ['Risk &amp; line intelligence','Lookup','SIM-swap / line-type / identity for risk-adaptive auth'],
+  ['Warm human handoff','TaskRouter','Skills + tier + sentiment routing; context pop'],
+  ['Grounded answers','Enterprise Knowledge','Transfer mechanics, timelines, disclosures'],
+  ['CDP / audiences / suppression','Segment','Profile + journey traits; opt-out suppression'],
+  ['RCS rich updates + SMS fallback','Messaging Service','Verified branded sender; cards + chips; auto-fallback'],
+];
+
+/* ============================ RENDER ============================ */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- phone thread ---- */
+const thread = document.getElementById('thread');
+const playBtn = document.getElementById('playBtn');
+const restartBtn = document.getElementById('restartBtn');
+let mi = 0, playing = false, timer = null;
+
+function scrollThread(){ thread.scrollTop = thread.scrollHeight; }
+
+function appendMessage(m){
+  if(m.day){ const d=document.createElement('div'); d.className='daystamp'; d.textContent=m.day; thread.appendChild(d); }
+  const row=document.createElement('div'); row.className='msg-row '+m.side;
+  const b=document.createElement('div'); b.className='bubble'; b.textContent=m.text; row.appendChild(b);
+  thread.appendChild(row);
+  if(m.tele && m.tele.length){
+    const wrap=document.createElement('div'); wrap.className='telemetry '+m.side;
+    m.tele.forEach(x=>{ const tg=document.createElement('div'); tg.className='tele-tag '+(x.c||''); tg.textContent='⟢ '+x.t; wrap.appendChild(tg); });
+    thread.appendChild(wrap);
+  }
+  scrollThread();
+}
+function showTyping(){
+  const t=document.createElement('div'); t.className='msg-row in'; t.id='typing';
+  t.innerHTML='<div class="typing"><i></i><i></i><i></i></div>'; thread.appendChild(t); scrollThread();
+}
+function clearTyping(){ const t=document.getElementById('typing'); if(t) t.remove(); }
+
+function step(){
+  if(mi>=messages.length){ stopPlay(); playBtn.textContent='▶ Replay journey'; return; }
+  const m=messages[mi];
+  if(m.side==='in' && !reduceMotion){
+    showTyping();
+    timer=setTimeout(()=>{ clearTyping(); appendMessage(m); mi++; timer=setTimeout(step, 950); }, 680);
+  } else {
+    appendMessage(m); mi++; timer=setTimeout(step, reduceMotion?120:900);
+  }
+}
+function startPlay(){ if(mi>=messages.length){ resetThread(); } playing=true; playBtn.textContent='❚❚ Pause'; step(); }
+function stopPlay(){ playing=false; clearTimeout(timer); clearTyping(); playBtn.textContent = mi>=messages.length ? '▶ Replay journey' : '▶ Play journey'; }
+function resetThread(){ stopPlay(); thread.innerHTML=''; mi=0; }
+
+playBtn.addEventListener('click',()=>{ playing ? stopPlay() : startPlay(); });
+restartBtn.addEventListener('click',()=>{ resetThread(); startPlay(); });
+document.getElementById('teleToggle').addEventListener('click',()=> document.body.classList.toggle('hide-telemetry'));
+
+if(reduceMotion){ messages.forEach(appendMessage); mi=messages.length; playBtn.textContent='▶ Replay journey'; }
+else { setTimeout(startPlay, 700); }  /* auto-play so the phone is alive on arrival */
+
+/* ---- voice spine ---- */
+const spine=document.getElementById('spine');
+const vdetail=document.getElementById('vdetail');
+vnodes.forEach((n,idx)=>{
+  const el=document.createElement('div'); el.className='vnode '+n.cls; el.dataset.i=idx;
+  el.innerHTML=`<div class="rail"><div class="bead">${n.id}</div><div class="wire"></div></div>
+    <div class="vbody"><div class="vt">${n.title}</div><div class="vp">${n.purpose.slice(0,44)}${n.purpose.length>44?'…':''}</div></div>`;
+  el.addEventListener('click',()=>selectVnode(idx));
+  spine.appendChild(el);
+});
+function selectVnode(idx){
+  document.querySelectorAll('.vnode').forEach(v=>v.classList.remove('sel'));
+  document.querySelector('.vnode[data-i="'+idx+'"]').classList.add('sel');
+  const n=vnodes[idx];
+  let turns=n.turns.map(t=>`
+    <div class="turn ${t.kind}">
+      <div><div class="who">${t.who}</div><div class="said">${t.said}</div></div>
+      <div class="ann">${t.ann.length? t.ann.map(a=>`<span>⟢ ${a}</span>`).join('') : '<span style="border:none;color:var(--faint);padding:0">—</span>'}</div>
+    </div>`).join('');
+  vdetail.innerHTML=`
+    <div class="vd-head"><h3>${n.id==='ESC'?'⎋ ':''}${n.title}</h3><span class="chip ${n.cls==='escape'?'transit':(n.cls==='human'?'msg':'voice')}">${n.id}</span></div>
+    <div class="vd-purpose">${n.purpose}</div>
+    <div class="vd-cols"><div class="vd-col-h">What the caller hears</div><div class="vd-col-h">What the system does</div></div>
+    ${turns}`;
+}
+selectVnode(0);
+
+/* ---- state machine ---- */
+const smRow=document.getElementById('smRow');
+const smInfo=document.getElementById('smInfo');
+const smCount=document.getElementById('smCount');
+let si=0;
+states.forEach((s,idx)=>{
+  if(idx>0){ const c=document.createElement('div'); c.className='sm-conn'; c.dataset.c=idx; smRow.appendChild(c); }
+  const el=document.createElement('div'); el.className='sm-state'; el.dataset.i=idx;
+  el.innerHTML=`<div class="sc">${s.icon}</div><div class="sl">${s.key}</div>`;
+  el.addEventListener('click',()=>{ si=idx; renderSM(); });
+  smRow.appendChild(el);
+});
+function renderSM(){
+  document.querySelectorAll('.sm-state').forEach((el,idx)=>{
+    el.classList.toggle('active', idx===si);
+    el.classList.toggle('past', idx<si);
+  });
+  document.querySelectorAll('.sm-conn').forEach(c=> c.classList.toggle('past', parseInt(c.dataset.c)<=si));
+  const s=states[si];
+  smInfo.innerHTML=`<h3>${s.icon} ${s.key}</h3><div class="trig">${s.trig}</div>
+    <p style="font-size:.9rem;color:var(--muted)">${s.desc}</p>
+    <div class="quote"><span class="lbl">Proactive message → customer</span>${s.msg}</div>`;
+  smCount.textContent=`${si+1} / ${states.length}`;
+}
+document.getElementById('smNext').addEventListener('click',()=>{ si=(si+1)%states.length; renderSM(); });
+document.getElementById('smPrev').addEventListener('click',()=>{ si=(si-1+states.length)%states.length; renderSM(); });
+renderSM();
+
+/* ---- operators ---- */
+const opGrid=document.getElementById('opGrid');
+operators.forEach(o=>{
+  const el=document.createElement('div'); el.className='card op';
+  el.innerHTML=`<div class="op-top"><span class="badge ${o.badge}">${o.badge==='tw'?'TWILIO':'CUSTOM'}</span><span class="badge trg">${o.trig}</span></div>
+    <h3>${o.name}</h3><p>${o.desc}</p>`;
+  opGrid.appendChild(el);
+});
+
+/* ---- curveballs ---- */
+const cbGrid=document.getElementById('cbGrid');
+curveballs.forEach(c=>{
+  const el=document.createElement('div'); el.className='card cb';
+  el.innerHTML=`<div class="cb-head"><div><span class="k" style="color:var(--transit)">${c.tag}</span><h3>${c.t}</h3></div><span class="plus">+</span></div>
+    <div class="cb-body"><div class="inner">
+      <div class="row"><span class="rk">trigger</span><span>${c.trigger}</span></div>
+      <div class="row"><span class="rk">flow</span><span>${c.path}</span></div>
+      <div class="row"><span class="rk">guardrail</span><span class="guard">${c.guard}</span></div>
+    </div></div>`;
+  el.addEventListener('click',()=>el.classList.toggle('open'));
+  cbGrid.appendChild(el);
+});
+
+/* ---- mapping table ---- */
+const mapBody=document.getElementById('mapBody');
+mapping.forEach(r=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td>${r[0]}</td><td><span class="prod">${r[1]}</span></td><td style="color:var(--muted);font-family:var(--f-mono);font-size:.8rem">${r[2]}</td>`;
+  mapBody.appendChild(tr);
+});
+
+/* ---- the conversation designer ---- */
+const cdPrinciples = [
+  { i:'01', h:'Architect, not scriptwriter', p:'Maps what a person can do in the space and curates the flows and underlying logic — a full spec of the experience, not a pile of canned replies.', tie:'Voice spine · State machine' },
+  { i:'02', h:'Human conventions first', p:'Starts from how people actually talk; GUI logic never ports straight to conversation. Then plans for what machines get wrong (errors) and what they do better (tireless recall).', tie:'Tone · Error handling' },
+  { i:'03', h:'Design for the probabilistic', p:'Comfort with ambiguity is the edge. With LLMs the output is never fully knowable, so the unhappy paths are designed as first-class, not afterthoughts.', tie:'Curveballs' },
+  { i:'04', h:'Choreograph the information', p:'The real craft is how information moves between parties — what gets recalled, what is relevant now, how knowledge transfers between person and system.', tie:'Memory · Architecture' },
+];
+const cdArtifacts = [
+  { n:'System & user personas', d:'The assistant’s voice and the customer it serves — “Daniel” and the warm, proactive specialist.', href:'#hero', to:'Overview' },
+  { n:'Sample dialogs', d:'Written turns that embody the persona and the logic — the spine of the whole design.', href:'#voice', to:'Voice spine' },
+  { n:'Flows & state logic', d:'Decision trees and state machines mapping how the system responds to every input.', href:'#engine', to:'Async engine' },
+  { n:'Context & memory model', d:'What the system remembers and recalls, so no one repeats themselves across weeks and channels.', href:'#arch', to:'Architecture' },
+  { n:'Error & repair paths', d:'The designed sub-flows for rejections, mismatches, and opt-outs — where the experience is really made.', href:'#curve', to:'Curveballs' },
+  { n:'Metrics & tuning loop', d:'How success is measured and improved: sentiment, resolution, script adherence, the long tail.', href:'#intel', to:'Intelligence' },
+];
+const lcDesign = [
+  'Research the customer, their intent, and emotional context',
+  'Define system + user personas and the voice',
+  'Write sample dialogs for the happy path',
+  'Map flows, state logic, and every error path',
+  'Prototype and pressure-test with real utterances',
+];
+const lcRun = [
+  'Monitor what Intelligence surfaces on live traffic',
+  'Sample the long tail of real conversations',
+  'Tune prompts, sample dialogs, and flows',
+  'Coordinate change requests with eng + ops',
+  'Measure against KPIs, then iterate',
+];
+const cdRoles = [
+  { c:true, rn:'Conversation Designer', ro:'Owns the experience end to end: personas, dialogs, flows, repair, and tone.', hand:'the hub' },
+  { rn:'Product Manager', ro:'Business goals, scope, and the KPIs the design is judged against.', hand:'aligns on goals & success metrics' },
+  { rn:'AI / Dialogue Engineer', ro:'Implements the logic — ConversationRelay, webhooks, LLM integration.', hand:'receives flows & prompts to build' },
+  { rn:'AI Trainer', ro:'Tunes understanding and model behavior; grows training examples.', hand:'shares sample dialogs & edge cases' },
+  { rn:'CX & Contact-Center Ops', ro:'Human-agent experience, routing, QA, and coaching.', hand:'defines handoff & escalation rules' },
+  { rn:'Compliance & Data', ro:'Disclosures and guardrails; analysts turn Insights into direction.', hand:'sets guardrails; returns metrics' },
+];
+const pcWrap=document.getElementById('cdPrinciples');
+cdPrinciples.forEach(x=>{ const el=document.createElement('div'); el.className='pcard';
+  el.innerHTML=`<div class="idx">${x.i}</div><h3>${x.h}</h3><p>${x.p}</p><div class="tiein">in this doc → <b>${x.tie}</b></div>`; pcWrap.appendChild(el); });
+const amWrap=document.getElementById('cdArtifacts');
+cdArtifacts.forEach(x=>{ const a=document.createElement('a'); a.href=x.href;
+  a.innerHTML=`<span class="an">${x.n}</span><span class="ad">${x.d}</span><span class="jump">↳ ${x.to}</span>`; amWrap.appendChild(a); });
+const ldWrap=document.getElementById('lcDesign'), lrWrap=document.getElementById('lcRun');
+lcDesign.forEach((s,i)=>{ const d=document.createElement('div'); d.className='lc-step'; d.innerHTML=`<span class="n">${i+1}</span><span>${s}</span>`; ldWrap.appendChild(d); });
+lcRun.forEach((s,i)=>{ const d=document.createElement('div'); d.className='lc-step'; d.innerHTML=`<span class="n">${i+1}</span><span>${s}</span>`; lrWrap.appendChild(d); });
+const rcWrap=document.getElementById('cdRoles');
+cdRoles.forEach(x=>{ const el=document.createElement('div'); el.className='role-card'+(x.c?' center':'');
+  el.innerHTML=`<div class="rn">${x.rn}</div><div class="ro">${x.ro}</div><div class="hand"><b>↔</b> ${x.hand}</div>`; rcWrap.appendChild(el); });
+
+/* ---- scroll reveal ---- */
+if(!reduceMotion){
+  document.querySelectorAll('section .wrap > *').forEach(el=>el.classList.add('reveal'));
+  const io=new IntersectionObserver((ents)=>{ ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }); },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+}
+
+/* ---- nav active state ---- */
+const navA=[...document.querySelectorAll('#navlinks a')];
+const secs=navA.map(a=>document.querySelector(a.getAttribute('href')));
+const navIo=new IntersectionObserver((ents)=>{
+  ents.forEach(e=>{ if(e.isIntersecting){ const id='#'+e.target.id; navA.forEach(a=>a.classList.toggle('active', a.getAttribute('href')===id)); } });
+},{rootMargin:'-45% 0px -50% 0px'});
+secs.forEach(s=>s&&navIo.observe(s));
+</script>
+</body>
+</html>
