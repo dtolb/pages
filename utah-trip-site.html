@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dan &amp; Liz — Utah, Oct 10–18 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1410; --panel:#241c16; --line:#3a2f25;
+    --text:#efe7dc; --muted:#b7a996;
+    --aztec:#b33a1e; --navajo:#c97b4a; --claron:#d99a90; --entrada:#c25e38;
+    --river:#6e8b74; --whiterim:#cbb79b; --slickrock:#d0913f; --highway:#8a93a6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+  body{background:var(--ink);color:var(--text);font-family:'Archivo',sans-serif;line-height:1.55}
+  a{color:inherit}
+
+  /* Hero */
+  .hero{position:relative;min-height:52vh;display:flex;align-items:flex-end;overflow:hidden}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+  .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(26,20,16,.15) 0%,rgba(26,20,16,.92) 88%)}
+  .hero-inner{position:relative;z-index:2;padding:56px 22px 34px;max-width:980px;margin:0 auto;width:100%}
+  .kicker{font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--slickrock)}
+  h1{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(2.1rem,7vw,3.6rem);line-height:1.04;margin:.35em 0 .3em}
+  .hero p{color:var(--muted);max-width:52ch;font-size:.95rem}
+
+  /* Day nav */
+  nav{position:sticky;top:0;z-index:10;background:rgba(26,20,16,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+  .navrow{display:flex;gap:8px;overflow-x:auto;padding:10px 18px;max-width:980px;margin:0 auto;scrollbar-width:none}
+  .navrow::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.06em;padding:7px 12px;border:1px solid var(--line);border-radius:999px;text-decoration:none;color:var(--muted);white-space:nowrap}
+  .chip:hover{color:var(--text);border-color:var(--muted)}
+
+  main{max-width:980px;margin:0 auto;padding:8px 18px 60px}
+
+  /* Day sections — geological strata rail is the signature */
+  section.day{margin:44px 0 0;border-left:5px solid var(--accent,var(--navajo));padding-left:18px;scroll-margin-top:70px}
+  .stratum{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent,var(--navajo))}
+  .day h2{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.45rem,4.5vw,2.1rem);margin:.25em 0 .1em}
+  .datebar{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted);margin-bottom:14px}
+  .plan{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+  .plan ul{list-style:none}
+  .plan li{padding:5px 0 5px 0;font-size:.93rem;display:flex;gap:10px}
+  .plan li .t{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--accent,var(--navajo));flex:0 0 74px;padding-top:3px}
+  .note{font-size:.85rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+
+  /* Galleries */
+  .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(min-width:680px){.gallery{grid-template-columns:repeat(3,1fr)}}
+  figure{position:relative;border-radius:8px;overflow:hidden;background:var(--panel);border:1px solid var(--line)}
+  figure img{width:100%;height:170px;object-fit:cover;display:block}
+  @media(min-width:680px){figure img{height:200px}}
+  figcaption{padding:8px 10px}
+  figcaption .cap{font-size:.78rem;font-weight:600}
+  figcaption .credit{display:block;font-size:.62rem;color:var(--muted);margin-top:2px;font-family:'IBM Plex Mono',monospace}
+  figure.wide{grid-column:span 2}
+  @media(min-width:680px){figure.wide{grid-column:span 1}}
+
+  /* Booking + checks */
+  .cards{display:grid;gap:14px;margin-top:48px}
+  @media(min-width:680px){.cards{grid-template-columns:1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+  .card h3{font-family:'Fraunces',serif;font-weight:600;font-size:1.1rem;margin-bottom:10px}
+  .card ol,.card ul{padding-left:18px;font-size:.88rem;color:var(--text)}
+  .card li{margin:6px 0}
+  footer{max-width:980px;margin:0 auto;padding:26px 18px 44px;color:var(--muted);font-size:.72rem;border-top:1px solid var(--line);font-family:'IBM Plex Mono',monospace}
+
+  figure.noimg img{display:none}
+  figure.noimg{min-height:120px;display:flex;align-items:flex-end;background:linear-gradient(160deg,var(--panel) 0%,var(--ink) 100%)}
+  figure.noimg::before{content:"photo unavailable";position:absolute;top:10px;left:10px;font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent,var(--navajo));opacity:.85}
+  figure.noimg figcaption{width:100%}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <img onerror="this.style.display='none'" src="https://d35wpzurnt59xd.cloudfront.net/assets/files/11404/moab_adventures_outdoor_fun.2000x500.jpg?mmima" alt="Sandstone arch in Moab desert" loading="eager">
+  <div class="hero-inner">
+    <span class="kicker">Dan &amp; Liz · Oct 10–18, 2026</span>
+    <h1>Nine days, five landscapes,<br>one loop of the red rock.</h1>
+    <p>Vegas → Valley of Fire → Zion → Scenic Byway 12 → Moab → Salt Lake. By foot, e-bike, horse, UTV, and river-cold neoprene.</p>
+  </div>
+</header>
+
+<nav aria-label="Days">
+  <div class="navrow">
+    <a class="chip" href="#d1">10 · Fire</a>
+    <a class="chip" href="#d2">11 · Narrows</a>
+    <a class="chip" href="#d3">12 · E-bike</a>
+    <a class="chip" href="#d4">13 · Byway 12</a>
+    <a class="chip" href="#d5">14 · Arches+UTV</a>
+    <a class="chip" href="#d6">15 · Ranch</a>
+    <a class="chip" href="#d7">16 · Canyonlands</a>
+    <a class="chip" href="#d8">17 · Delicate</a>
+    <a class="chip" href="#d9">18 · Home</a>
+    <a class="chip" href="#book">Book now</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- DAY 1 -->
+<section class="day" id="d1" style="--accent:var(--aztec)">
+  <span class="stratum">Aztec Sandstone · Nevada</span>
+  <h2>Land, then straight into the fire</h2>
+  <div class="datebar">Sat Oct 10 · LAS ~11:00am PT → Springdale ~6:30pm MT</div>
+  <div class="plan"><ul>
+    <li><span class="t">11:00a</span><span>Land LAS, rental car, lunch to go</span></li>
+    <li><span class="t">1:00p</span><span>Valley of Fire ($15) — Fire Wave, 1.5 mi RT flat</span></li>
+    <li><span class="t">2:15p</span><span>Mouse's Tank Rd drive → White Domes slot loop, 1.1 mi</span></li>
+    <li><span class="t">3:30p</span><span>Exit east via Overton; 2.5 hr drive, +1 hr to Mountain Time</span></li>
+    <li><span class="t">6:30p</span><span>Springdale: Narrows gear pickup, check in Flanigan's Inn</span></li>
+  </ul><div class="note">2L water each — no shade, no food in the park. If the outfitter is closed on arrival, pick up gear at open Sunday morning.</div></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDSmEi7f089Ih0T1YEEUihu-BXe9qjYZmYnN6HCbGsgzBoeM88cUNjxOR5hpxdBTOdoMj_-WqUuOzxbHxwVscD-4805XvSvVvsbi37toZg2HDPmfq52NLtMFQUA3j_dnoUmPVFYl0WG3g_H5lXXhvc8iQ=s4800-w800-h600" alt="Fire Wave striped sandstone"><figcaption><span class="cap">Fire Wave</span><span class="credit">Photo: Vladimír Pekník / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBtT3ioACewQV0LS6v7jJ08e0mOm1Lwazp3NZrxGIvcp3W6mR0auIzTbq3luCE87LK4vU9VnEidpqDi4nolO2HdYpEdrd1jt-RfFkk8jEuO89nGbrRC3C4wgLumXFdtq-uZiboR1WydVX0DzKI=s4800-w800-h600" alt="Valley of Fire red rock trail"><figcaption><span class="cap">On the trail</span><span class="credit">Photo: A B / Google Maps</span></figcaption></figure>
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD98qyw2IspkG-NhONiSnkvAgWjWounPSDLJFVSz93aruZDn-Ky5kGKvWwIwlFAj6pCKIUPiJULLxGzRBDlKtCiOXvTHpFJlzEK_fk_jCbFSLbs5zSOWqT_4NmR9RXWh6Bwo7WzJ4n8pXL9iA=s4800-w800-h600" alt="Striped rock formations"><figcaption><span class="cap">The marbling</span><span class="credit">Photo: Anna Kang / Google Maps</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 2 -->
+<section class="day" id="d2" style="--accent:var(--navajo)">
+  <span class="stratum">Navajo Sandstone · Zion</span>
+  <h2>The Narrows, then the overlook</h2>
+  <div class="datebar">Sun Oct 11 · first shuttle out, sunset up top</div>
+  <div class="plan"><ul>
+    <li><span class="t">6:30a</span><span>Shuttle to Temple of Sinawava (stop 9), lunch packed</span></li>
+    <li><span class="t">7:00a</span><span>Narrows bottom-up to Wall Street / Orderville, 4–5 hrs in ~55°F water</span></li>
+    <li><span class="t">1:30p</span><span>Return gear, rest</span></li>
+    <li><span class="t">4:30p</span><span>Drive Mt Carmel hwy → Canyon Overlook, 1 mi RT, sunset ~6:50pm</span></li>
+    <li><span class="t">7:30p</span><span>Dinner: Whiptail Grill or Oscar's</span></li>
+  </ul><div class="note">Go/no-go morning of: flow under 150 CFS and no flash-flood watch (NPS site or the outfitter).</div></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDOrAUb5NMpBg_uljCj64OFg6Shk8Spks7lXbs98iM_wAHde8MYDZWm16DyqGoFCrAKO0zbjr7MdiRgc7hc7dh7xDX7LK64swK8KfP622MUuTk8qQR5oRj-kM4kRe1PgWNak5v2zWKepSAY=s4800-w800-h600" alt="Hikers wading The Narrows"><figcaption><span class="cap">The Narrows</span><span class="credit">Photo: Becca / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCufXMHth3oHF6ftV_ZQ8gYF1OU-BmO6lh32ZFFVAyFDluoBg3TaXScy1mgEdkeFqterQEbrgn821ocVPFgHXmzNWfpa7NabECZhcR98wM0E3yLJJfD6ey3tBo6AFgjZNptHUUmPRXNlH1lYYzjmMPHcw=s4800-w800-h600" alt="Canyon walls in The Narrows"><figcaption><span class="cap">Wall Street</span><span class="credit">Photo: Aravind P / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBUlOnFGpZP4Ph-gfGC9UY8-7DPXnv4CUZzhUxoOXo62VW6X82g_RK8RR45zOBCi-a8aKTDowVsfSaMIGEaQ2oy0cElk1hLVC5JajdCevkv3eHzSNFNpkfuGhgnkVwkqC6iJaHhXeKMW4bSsA=s4800-w800-h600" alt="Canyon Overlook view"><figcaption><span class="cap">Canyon Overlook</span><span class="credit">Photo: Kijo / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBeQ09ev1btrNtMo5-xrARtKagbGBC1qFiyFjDtASi_Z6zobo2R7gat4mFduiOBrv_AL6lIZtHyexHy_V5VVjBXL2q4kGMi95GFvi0Kh_kZMN087TFLXDZcgRDobUIjl4P3XnEl4DcFsKjUC7XfpJo=s4800-w800-h600" alt="Late light at Canyon Overlook"><figcaption><span class="cap">Late-day light</span><span class="credit">Photo: Dorota Zięba / Google Maps</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 3 -->
+<section class="day" id="d3" style="--accent:var(--navajo)">
+  <span class="stratum">Navajo Sandstone · Zion</span>
+  <h2>The canyon by e-bike</h2>
+  <div class="datebar">Mon Oct 12 · Pa'rus in, Emerald Pools on foot, coast home</div>
+  <div class="plan"><ul>
+    <li><span class="t">8:30a</span><span>E-bikes in Springdale → Pa'rus Trail into the park</span></li>
+    <li><span class="t">9:30a</span><span>Scenic Drive: Court of the Patriarchs, Big Bend (pull off for shuttles)</span></li>
+    <li><span class="t">10:30a</span><span>Lock bikes at Zion Lodge → Emerald Pools loop via Kayenta, ~3 mi, 350 ft</span></li>
+    <li><span class="t">12:30p</span><span>Lunch: Castle Dome Café at the Lodge</span></li>
+    <li><span class="t">2:00p</span><span>Ride to Temple of Sinawava, then coast downhill to town</span></li>
+  </ul><div class="note">Fall honesty: the pools are modest in October — this is about the loop and the canyon, not the water.</div></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBKJjdD5x0PIxvzkOwvcvxicK17QTGbztpVP64NvJMC13VbOTX7sFIEeKsX9F8NlHIPcePqYJHle_P7jtMafuW6d4C2EbdVEAFervuALA7ecmVZYttch_JStYgOdPKlvqsR91BcATXu4OjGBhZjGbFM=s4800-w800-h600" alt="Pa'rus Trail path with canyon walls"><figcaption><span class="cap">Pa'rus Trail</span><span class="credit">Photo: Violet Olivo / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBFjOU6EClFx1aIwqZFg7BvwfuBbqROuHkeux9kA96c22OM8Wutcwic0gzZDQg6vap31ugyyif3sm8exEsMtNyqnsYDADI_qAmY41wY8uKooRWJm-DngXsp2USaIc80tCL8EPK1HynK24Vivw=s4800-w800-h600" alt="Virgin River along Pa'rus"><figcaption><span class="cap">Virgin River bends</span><span class="credit">Photo: Amit Shubinsky / Google Maps</span></figcaption></figure>
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAZ8ruS3kq0oGfwukCplHAdAV-JzhT6qIu955Mo9yzEpMxgpFH0kbsF5S03P5R21IoonnFZrzx5v7yO_pzVbtE4P5io44HlxOPqHr3PxpxyAIaWyPS2lE_KE1wrR0gy-Pxbfy3XK2Mk4pFk92vLdIu-9g=s4800-w800-h600" alt="Emerald Pools trail"><figcaption><span class="cap">Emerald Pools trail</span><span class="credit">Photo: Novobaczky Jozsef / Google Maps</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 4 -->
+<section class="day" id="d4" style="--accent:var(--claron)">
+  <span class="stratum">Claron Formation · Scenic Byway 12</span>
+  <h2>The drive that is the destination</h2>
+  <div class="datebar">Tue Oct 13 · Springdale 8:00am → Sorrel River Ranch ~7:00pm</div>
+  <div class="plan"><ul>
+    <li><span class="t">8:00a</span><span>UT-9 through Zion east side → US-89 north</span></li>
+    <li><span class="t">10:00a</span><span>Red Canyon roadside hoodoos — or the Bryce Sunset→Sunrise rim walk (+1.5 hrs)</span></li>
+    <li><span class="t">1:00p</span><span>Head of the Rocks Overlook (mile 69), then the Hogback ridge</span></li>
+    <li><span class="t">1:45p</span><span>Lunch: Burr Trail Grill, Boulder (Kiva Koffeehouse is closed Tuesdays)</span></li>
+    <li><span class="t">3:30p</span><span>Capitol Reef pass-through: Gifford Homestead + petroglyph boardwalk</span></li>
+    <li><span class="t">7:00p</span><span>UT-128 river road into the ranch at golden hour · dinner at River Grill</span></li>
+  </ul><div class="note">Gifford pie sells out by mid-morning most days — treat it as a bonus. Ray's Tavern in Green River is the backup dinner if you'd rather eat en route.</div></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAfGftgMgzJd49Zsj2Uv26fGqHCXfJsm6DaypY2Gt5c0mjKYOv6p5iLw1oqRzsWs01jApToQUyUieuX4VQJ2K4D6_VfFF2hpxiM3bbyScCXoh0558f2C_Zm1_6oH6yJEBNDwMClwvrHNcgfghhtTp6HGw=s4800-w800-h600" alt="Red Canyon hoodoos"><figcaption><span class="cap">Red Canyon</span><span class="credit">Photo: Rose Vee / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBbeTUtufGK6OAyRwkIglCGAnbRr6AlTAa8kWoygGPrU_LHKcyxeg_LdQu7ceFTdvJ4U-ahJEXmIAdzfqseQPXQQ5psctAzNXlHZMRHaGKxQV_3BgNd-9KK-wbjzZCpzhvq64Y-U7S7NVLEc7s=s4800-w800-h600" alt="Bryce amphitheater hoodoos"><figcaption><span class="cap">Bryce — Sunset Point</span><span class="credit">Photo: Edyta Morawska / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBu9doUIsFEiBLGU-FJtLtYKo1kOuocfoihystGslGxKJPu0SQbHzxPc1IQymbLi3AT8aEbUx2JzEtTN90hpscatM2FZmkSve7WrH_htENjv5zi6FRkBpehDddmQ6r4ahDvJzFJacXVkhbX2g=s4800-w800-h600" alt="Highway 12 winding through slickrock"><figcaption><span class="cap">Head of the Rocks</span><span class="credit">Photo: Camille Speck / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB9H0F2V7wu46TI44p69hW2ZjmOzngw5TwEjrx33l4xMpspT4h4NEW1CmM1v5z84eYQlFCy9rBB9-0gn0mkCkqa9OYKM799flkxHPMRb2UfzPPsl6bq-XqGFBlctoppeDnyOIFvHHSG9snZ7KX2uJ1zNQ=s4800-w800-h600" alt="Burr Trail Grill"><figcaption><span class="cap">Burr Trail Grill</span><span class="credit">Photo: Jennifer Hunt / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAaHehoo6THTGOKtEsO0MmZdRR2Px06-iPXrGhGYr6uXIKuBqXunp_FRWnACbYbuK3rTonoGFUXfF6sNXTyzUSbfiJW9lSvoQYmjXdsOR1KvNvp6KD8BPULiQrp69A14TOB6Jxojn7-_2UUNjz1JLF_=s4800-w800-h600" alt="Gifford Homestead"><figcaption><span class="cap">Gifford Homestead</span><span class="credit">Photo: Bert / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA8oIXF2PtFT5XGxG5z-8EtX0wBsOrsQmbXooSarISAg35vR5nFigc0_3t1KoJ2Kx18AIulv1VL4HixZKUaZga0LYsT2M5aLY3U290b-SoehtAfYjfKkYio7ngBSihjGj5uq5sO2t8mCvwe9vw=s4800-w800-h600" alt="Petroglyph panel Capitol Reef"><figcaption><span class="cap">Fremont petroglyphs</span><span class="credit">Photo: Tim Kruse / Google Maps</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 5 -->
+<section class="day" id="d5" style="--accent:var(--entrada)">
+  <span class="stratum">Entrada Sandstone · Arches</span>
+  <h2>Arches early, throttle by afternoon</h2>
+  <div class="datebar">Wed Oct 14 · park at dawn, UTV/Raptor after lunch</div>
+  <div class="plan"><ul>
+    <li><span class="t">6:45a</span><span>Enter Arches early (timed entry may apply — check recreation.gov)</span></li>
+    <li><span class="t">7:30a</span><span>Devils Garden → Landscape Arch, 1.6 mi RT</span></li>
+    <li><span class="t">9:30a</span><span>Windows section + Double Arch</span></li>
+    <li><span class="t">12:00p</span><span>Lunch at the ranch</span></li>
+    <li><span class="t">2:00p</span><span>UTV or Raptor tour — canyon rims you can't drive to yourselves</span></li>
+    <li><span class="t">7:00p</span><span>River Grill, then the campfire</span></li>
+  </ul><div class="note">UTV = you drive, open-air, dusty, technical. Raptor = guided F-150, A/C, fast open terrain. Cold morning? Raptor wins.</div></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAnmBiXNHz9Bnge7LAhF_WUBMrKY0JSfnzU1l8yWVj3j5Fd8Hx57LGnCLfcIMMwMHiaQzBQsKO_ud1OkXFkCyO8ZVpW2kMMQ8O1uvU3_M-jaFmP6caVo_ENx2AI39WR6V0btizTruWHcFneXbI=s4800-w800-h600" alt="Landscape Arch span"><figcaption><span class="cap">Landscape Arch</span><span class="credit">Photo: Bob Na / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB4KmSC_FOk-pgZkqQJqKzV5gzeDNi8_3inmyXwERNdurGqd_EWNBcQximsRcJUET33iQUOBv0yu0JlbYlPUoaLNpzX8gcH7lDMYqCTdF9jirz0d-DZCM_ZoX075_o4DebPGXg4naO6tSzf=s4800-w800-h600" alt="Devils Garden trail"><figcaption><span class="cap">Devils Garden</span><span class="credit">Photo: Grishma Ajmera / Google Maps</span></figcaption></figure>
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://d35wpzurnt59xd.cloudfront.net/assets/files/44530/20201012_srr_activities_utv_jpeg_lg-01959.600x338.jpg?22ku81" alt="UTVs parked on cliff overlook"><figcaption><span class="cap">Sorrel UTV tour</span><span class="credit">Photo: Sorrel River Ranch</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 6 -->
+<section class="day" id="d6" style="--accent:var(--river)">
+  <span class="stratum">Colorado River Corridor · The Ranch</span>
+  <h2>Horses in the morning, spa after</h2>
+  <div class="datebar">Thu Oct 15 · the deliberate recovery day</div>
+  <div class="plan"><ul>
+    <li><span class="t">sunrise</span><span>Optional guest-only Sorrel Ridge hike — 360° river views</span></li>
+    <li><span class="t">9:00a</span><span>Horseback ride along the river corridor</span></li>
+    <li><span class="t">2:00p</span><span>Spa — in that order, you'll want it</span></li>
+    <li><span class="t">evening</span><span>Campfire + s'mores</span></li>
+  </ul></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://d35wpzurnt59xd.cloudfront.net/assets/files/12375/horse_riding_05.1200x900.jpg?2c64ay" alt="Rider petting horse at the ranch"><figcaption><span class="cap">Ranch horses</span><span class="credit">Photo: Sorrel River Ranch</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://d35wpzurnt59xd.cloudfront.net/assets/files/11566/spa_treatment_room.1200x900.jpg?mf1oy" alt="Spa treatment room"><figcaption><span class="cap">Sorrel Spa</span><span class="credit">Photo: Sorrel River Ranch</span></figcaption></figure>
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://d35wpzurnt59xd.cloudfront.net/assets/files/12376/39.1200x900.jpeg?2c64b5" alt="Nightly campfire circle"><figcaption><span class="cap">Nightly campfire</span><span class="credit">Photo: Sorrel River Ranch</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 7 -->
+<section class="day" id="d7" style="--accent:var(--whiterim)">
+  <span class="stratum">White Rim Sandstone · Canyonlands</span>
+  <h2>Island in the Sky, sunset at the Point</h2>
+  <div class="datebar">Fri Oct 16 · pack lunch from JJ's Mercantile</div>
+  <div class="plan"><ul>
+    <li><span class="t">9:00a</span><span>Mesa Arch, 0.5 mi (go at sunrise only if you want the glow shot)</span></li>
+    <li><span class="t">10:30a</span><span>Grand View Point rim walk, 2 mi — best view in the district</span></li>
+    <li><span class="t">12:30p</span><span>Green River Overlook + picnic</span></li>
+    <li><span class="t">3:30p</span><span>Optional: Intrepid Trail e-bike loops at Dead Horse Point</span></li>
+    <li><span class="t">6:15p</span><span>Dead Horse Point overlook ($20) for sunset</span></li>
+  </ul></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAY7_0S4BREHp3mgFLsJFHZmTBBZ3YH3AqTVk8RyTdA1NNm9v_ZwYAxepzZBItJybm-h6UGGDMVxFlqOku-kMYpF05xW2rzZMPEP-AZUFqHaKZ0EpfZhkdEu16Dq3qjFEKb0SpgkuquXZLCoJI=s4800-w800-h600" alt="Mesa Arch framing canyon"><figcaption><span class="cap">Mesa Arch</span><span class="credit">Photo: yanh perez / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCnNGkTXQL5rDmPkKDeAB3C2QImYFDPGDkKrhHmtdoOjUc8O0wbqyommsrFt47wNh09LNGWvkVvzX4pl1BuY6I--sbPNsTG3wZ37E_ThxAip8wkijm7P1Vo7zdPwKk75ShmhLzRTRNaExhv6JQ=s4800-w800-h600" alt="Dead Horse Point canyon bend"><figcaption><span class="cap">Dead Horse Point</span><span class="credit">Photo: Olivier Blaser / Google Maps</span></figcaption></figure>
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBgTYVDlnwgIa2g-zA1g5MEWpzi_b2yyIs6CtqZ-iy3AZPnUDg8gV5AVs0dXWF5d71Wkdd2OAQ3bADAjz5iiNpvw0ui34oxljcdFPubZlBZOAoyy0Du-kwUzXWPxlcdP0B2BgHAWspHIIst2A=s4800-w800-h600" alt="Colorado River gooseneck from Dead Horse Point"><figcaption><span class="cap">The gooseneck at dusk</span><span class="credit">Photo: Ngo Hai Anh / Google Maps</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 8 -->
+<section class="day" id="d8" style="--accent:var(--slickrock)">
+  <span class="stratum">Slickrock · Arches backcountry</span>
+  <h2>Sunrise at Delicate, dinosaurs by e-bike</h2>
+  <div class="datebar">Sat Oct 17 · the icon, earned; then tracks in the rock</div>
+  <div class="plan"><ul>
+    <li><span class="t">6:00a</span><span>Delicate Arch, 3 mi RT, 480 ft slickrock — sunrise beats crowds and heat</span></li>
+    <li><span class="t">10:00a</span><span>Guided Klondike Bluffs e-bike — dinosaur tracks, Tower Arch country</span></li>
+    <li><span class="t">alt</span><span>Half-day Colorado raft (Wild West Voyages) or Fisher Towers hike, 4.4 mi</span></li>
+    <li><span class="t">7:00p</span><span>Final River Grill dinner, last campfire</span></li>
+  </ul><div class="note">Ask the ranch to confirm Klondike as the e-bike route when booking (their bike vendor is Magpie Cycling).</div></div>
+  <div class="gallery">
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCqfO0r4oWGXmr8aBge-10KMq0fFHOwnXeXsHGH2BNtv9e1dJSzvptMJ8Dz8jTQH7uD0FODfPQd6k6tNeIeyBs2hA_A5n10J4aYgQqQ0HWQyQ4nfAfii8bV7ZAXgU2lpS3BdABvNU_0C9yjSA=s4800-w800-h600" alt="Delicate Arch"><figcaption><span class="cap">Delicate Arch</span><span class="credit">Photo: Ignacio G.M. / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAbHi6EpIvMcbbW6qTlkmt7OG3GCq_uONxpfhI9_KyqlgHpSJDxJQgzJaoNS4mflvhTJuIkT4uUHJZ1mt69nUAyyHtiAgaxCEVR75yTSlmJy4DT7uRXaD0Eeb4OIJHEradWdTb080Lx_LXB-Q=s4800-w800-h600" alt="Delicate Arch bowl at dawn"><figcaption><span class="cap">The bowl at dawn</span><span class="credit">Photo: Nano Adventure / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAjwdzvYYoYzEJBiLZd75sgkRZK0wKFYS9OM3Ca1KWOYBTLdnpusXDDAGe-ldEnP2nZlH_BWFjxesAIiuzx-EvViZ2agrUkRKPje6yW9PL3NSPrhU2OdvYb9plEzLeASBEP7suGXaulr3Uy2g=s4800-w800-h600" alt="Klondike Bluffs slickrock"><figcaption><span class="cap">Klondike Bluffs</span><span class="credit">Photo: Ralph Kristopher / Google Maps</span></figcaption></figure>
+    <figure><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBcVSKHeGx56jX311mJu-f9InF9cXohW3kJKXl_gBtaixj09kvwJGurgr4UPxzc82n58CkQ2aoKMgF0ivvcoV2YmbUkKCoSHiCCXU4V1q2iAt2ezNSpU3RqU_Ag2hoHkvSu_3i6I8YZqDkiHw=s4800-w800-h600" alt="Klondike Bluffs trail terrain"><figcaption><span class="cap">Slickrock singletrack</span><span class="credit">Photo: Nouk Sopha / Google Maps</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- DAY 9 -->
+<section class="day" id="d9" style="--accent:var(--highway)">
+  <span class="stratum">US-191 → I-70 → SLC</span>
+  <h2>One last sunrise, then home</h2>
+  <div class="datebar">Sun Oct 18 · wheels rolling by 10:30–11:00am · SLC → RDU 5:50pm</div>
+  <div class="plan"><ul>
+    <li><span class="t">sunrise</span><span>Sorrel Ridge hike, breakfast, pack</span></li>
+    <li><span class="t">10:30a</span><span>Leave the ranch — ~3 hr 45 min to SLC, gas in Green River or Price</span></li>
+    <li><span class="t">3:30p</span><span>Rental car drop → airport by 3:45pm</span></li>
+    <li><span class="t">5:50p</span><span>Fly SLC → RDU</span></li>
+  </ul><div class="note">No park visit this morning — the math doesn't work for a 5:50pm flight.</div></div>
+  <div class="gallery">
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDRFyRBw_XyBqxSNTXYOJDOqb6aG5Vjc1Rus8Xi5vY9HTcT4qLdVV4-q9FSuTsPYCeg1r_wLxgjhP1ubx8zDDDEtTfVrGYnV8C-yHAlvGxDgCUwVDF8nsy8vjv9KQ7DC6Wb7CgTAoB1oX3JTQ=s4800-w600-h400" alt="Sorrel River Ranch grounds"><figcaption><span class="cap">Last morning at the ranch</span><span class="credit">Photo: Sorrel River Ranch / Google Maps</span></figcaption></figure>
+    <figure class="wide"><img loading="lazy" onerror="this.closest('figure').classList.add('noimg')" src="https://d35wpzurnt59xd.cloudfront.net/assets/files/12377/2015_03_29_keen_sand_and_snow_moab_day_02_5dmk3_0058.1200x900.jpg?2c64aq" alt="Hikers on Sorrel Ridge at sunrise"><figcaption><span class="cap">Sorrel Ridge at sunrise</span><span class="credit">Photo: Sorrel River Ranch</span></figcaption></figure>
+  </div>
+</section>
+
+<!-- BOOKING -->
+<div class="cards" id="book">
+  <div class="card">
+    <h3>Book now</h3>
+    <ol>
+      <li>Sorrel River (435-259-4642): UTV/Raptor Oct 14 pm · horseback Oct 15 am · spa Oct 15 pm · Klondike e-bike Oct 17 — 24-hr minimum, October is peak</li>
+      <li>Arches timed entry for Oct 14, if required — recreation.gov</li>
+      <li>Narrows gear for Oct 10 evening pickup (Zion Outfitter / Zion Guru)</li>
+      <li>Springdale e-bikes for Oct 12</li>
+      <li>America the Beautiful pass, $80 — covers Zion, Arches, Canyonlands</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>Standing checks</h3>
+    <ul>
+      <li>Narrows: flow under 150 CFS + no flash-flood watch, morning of Oct 11</li>
+      <li>Zion shuttle schedule for mid-October</li>
+      <li>Burr Trail Grill open status for Tue Oct 13 (Kiva is closed Tuesdays)</li>
+      <li>Dead Horse Point: $20, separate from the NPS pass</li>
+      <li>Sunset ~6:50pm all week — plan overlooks accordingly</li>
+    </ul>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  Route: LAS → Valley of Fire → Springdale → Scenic Byway 12 → Sorrel River Ranch → SLC.
+  Photos credited to their photographers via Google Maps and Sorrel River Ranch; shown here for trip-planning review.
+</footer>
+
+</body>
+</html>
