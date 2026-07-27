@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight School — SE Enablement</title>
+<style>
+  :root{
+    --field:#ECF1F3;
+    --paper:#FFFFFF;
+    --ink:#14283A;
+    --muted:#5A6B7A;
+    --line:#C6D2D9;
+    --conv:#2E6FA3;     /* Twilio Conversations track */
+    --agent:#C42B72;    /* agentic tooling track — VOR magenta */
+    --ent:#2E7D5B;      /* enterprise track */
+    --display:"Avenir Next","Futura","Century Gothic","Trebuchet MS",sans-serif;
+    --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--field);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:16px;line-height:1.55;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 79px, rgba(46,111,163,.06) 79px 80px),
+      repeating-linear-gradient(90deg, transparent 0 79px, rgba(46,111,163,.06) 79px 80px);
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+
+  /* ---------- hero ---------- */
+  header{padding:56px 0 8px}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    color:var(--agent);text-transform:uppercase;
+  }
+  h1{
+    font-family:var(--display);font-weight:600;
+    font-size:clamp(40px,6vw,64px);letter-spacing:-.02em;line-height:1.05;
+    margin:10px 0 14px;
+  }
+  .thesis{max-width:640px;color:var(--muted);font-size:18px}
+  .thesis strong{color:var(--ink);font-weight:600}
+
+  /* ---------- track legend ---------- */
+  .tracks{display:flex;flex-wrap:wrap;gap:10px 22px;margin:26px 0 8px}
+  .track{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;letter-spacing:.04em}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.conv{background:var(--conv)} .dot.agent{background:var(--agent)} .dot.ent{background:var(--ent)}
+
+  /* ---------- how it works ---------- */
+  .how{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);
+    margin:34px 0 8px;
+  }
+  .how div{background:var(--paper);padding:18px 20px}
+  .how h3{font-family:var(--display);font-size:16px;font-weight:600;margin-bottom:4px}
+  .how p{font-size:14px;color:var(--muted)}
+  .how .k{font-family:var(--mono);font-size:11px;color:var(--agent);letter-spacing:.18em;display:block;margin-bottom:8px}
+
+  /* ---------- climb chart ---------- */
+  .chart-section{margin-top:44px}
+  .chart-label{
+    font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px;
+  }
+  .chart{
+    position:relative;width:100%;aspect-ratio:1000/340;
+    border:1px solid var(--line);background:var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 84px, rgba(46,111,163,.08) 84px 85px);
+  }
+  .chart svg{position:absolute;inset:0;width:100%;height:100%}
+  .leg{stroke:var(--line);stroke-width:2;transition:stroke .25s}
+  .leg.docs{stroke-dasharray:6 5}
+  .leg.flown{stroke:var(--conv)}
+  .runway{stroke:var(--ink);stroke-width:6}
+  .wp{
+    position:absolute;transform:translate(-50%,-50%);
+    background:none;border:none;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    font-family:var(--mono);color:var(--ink);padding:6px;
+  }
+  .wp .sym{
+    width:16px;height:16px;border-radius:50%;
+    border:2.5px solid var(--ink);background:var(--paper);
+    transition:background .15s,border-color .15s;
+  }
+  .wp.docs .sym{border-radius:0;transform:rotate(45deg);border-color:var(--ent)}
+  .wp .code{font-size:11px;letter-spacing:.08em;white-space:nowrap}
+  .wp .name{font-size:10.5px;color:var(--muted);white-space:nowrap;letter-spacing:.03em}
+  .wp:hover .sym{background:#E4ECF2}
+  .wp[aria-selected="true"] .sym{background:var(--agent);border-color:var(--agent)}
+  .wp[aria-selected="true"] .code{color:var(--agent);font-weight:700}
+  .wp:focus-visible{outline:2px solid var(--agent);outline-offset:3px}
+
+  /* ---------- layer panels ---------- */
+  .panels{margin:18px 0 0}
+  .panel{
+    display:none;background:var(--paper);border:1px solid var(--line);
+    border-top:3px solid var(--agent);padding:24px 26px;
+  }
+  .panel.docs-only{border-top-color:var(--ent)}
+  .panel.active{display:grid;grid-template-columns:1.3fr 1fr;gap:8px 40px}
+  .panel .head{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .panel h2{font-family:var(--display);font-size:24px;font-weight:600;letter-spacing:-.01em}
+  .panel .fl{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.14em}
+  .chip{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    border:1px solid var(--ent);color:var(--ent);padding:2px 8px;border-radius:2px;
+  }
+  .panel h4{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px;
+  }
+  .panel p{font-size:15px;margin-bottom:14px}
+  .panel .lab p{color:var(--muted);font-size:14px}
+  .panel .tr{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--muted)}
+  .panel .tr span{display:flex;align-items:center;gap:8px}
+  .panel .nav{grid-column:1/-1;margin-top:6px;display:flex;justify-content:flex-end}
+  .panel .next{
+    font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+    background:none;border:1px solid var(--ink);color:var(--ink);
+    padding:7px 14px;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .panel .next:hover{background:var(--ink);color:var(--paper)}
+  .panel .next:focus-visible{outline:2px solid var(--agent);outline-offset:2px}
+
+  /* ---------- outcome ---------- */
+  .outcome{
+    margin:56px 0 72px;border-left:3px solid var(--agent);
+    padding:6px 0 6px 24px;max-width:720px;
+  }
+  .outcome h3{font-family:var(--display);font-size:20px;font-weight:600;margin-bottom:8px}
+  .outcome p{color:var(--muted);font-size:16px}
+  .outcome p strong{color:var(--ink)}
+
+  /* ---------- mobile ---------- */
+  @media (max-width:720px){
+    .how{grid-template-columns:1fr}
+    .chart-section .chart, .chart-section .chart-label{display:none}
+    .panel, .panel.active{display:grid !important;grid-template-columns:1fr;margin-bottom:16px}
+    .panel .nav{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">SE Enablement &middot; Self-paced &middot; Console-first</span>
+    <h1>Flight School</h1>
+    <p class="thesis">Rebuild <strong>Delta&nbsp;Assist</strong> from the bones up — eight layers that climb from a
+    human agent with a headset to an AI agent with the whole toolset. Along the way you configure every piece of
+    Twilio's Conversations suite by hand, and learn where the enterprise questions actually live.</p>
+
+    <div class="tracks" aria-label="Learning tracks">
+      <span class="track"><span class="dot conv"></span>Twilio Conversations suite</span>
+      <span class="track"><span class="dot agent"></span>Agentic tooling</span>
+      <span class="track"><span class="dot ent"></span>Enterprise lens</span>
+    </div>
+  </header>
+
+  <section class="how" aria-label="How learning works">
+    <div><span class="k">STEP 1</span><h3>The code is given</h3><p>Each layer is a complete, runnable app. You read it to understand it — you never write it.</p></div>
+    <div><span class="k">STEP 2</span><h3>The Console is the lab</h3><p>You provision numbers, wire webhooks, and configure Orchestrator, Memory, and Intelligence yourself, in the Twilio Console.</p></div>
+    <div><span class="k">STEP 3</span><h3>Talk to it, verify it</h3><p>Scripted conversations tell you what to say and what to notice. Every layer ends with live, end-to-end verification.</p></div>
+  </section>
+
+  <section class="chart-section" aria-label="The climb, layer by layer">
+    <p class="chart-label">Climb profile — select a waypoint</p>
+
+    <div class="chart">
+      <svg viewBox="0 0 1000 340" preserveAspectRatio="none" aria-hidden="true">
+        <line class="runway" x1="10" y1="330" x2="80" y2="330"/>
+        <line class="leg"      data-seg="0" x1="40"  y1="300" x2="155" y2="267"/>
+        <line class="leg"      data-seg="1" x1="155" y1="267" x2="270" y2="234"/>
+        <line class="leg"      data-seg="2" x1="270" y1="234" x2="385" y2="201"/>
+        <line class="leg"      data-seg="3" x1="385" y1="201" x2="500" y2="168"/>
+        <line class="leg docs" data-seg="4" x1="500" y1="168" x2="615" y2="135"/>
+        <line class="leg"      data-seg="5" x1="615" y1="135" x2="730" y2="102"/>
+        <line class="leg docs" data-seg="6" x1="730" y1="102" x2="845" y2="69"/>
+        <line class="leg"      data-seg="7" x1="845" y1="69"  x2="960" y2="36"/>
+      </svg>
+      <!-- waypoints: x = 4..96%, y = climb -->
+      <button class="wp" data-layer="l00" style="left:4%;top:88.2%"   role="tab" aria-selected="true"  aria-controls="l00"><span class="sym"></span><span class="code">00</span><span class="name">Bones</span></button>
+      <button class="wp" data-layer="l01" style="left:15.5%;top:78.5%" role="tab" aria-selected="false" aria-controls="l01"><span class="sym"></span><span class="code">01</span><span class="name">Orchestrator</span></button>
+      <button class="wp" data-layer="l02" style="left:27%;top:68.8%"   role="tab" aria-selected="false" aria-controls="l02"><span class="sym"></span><span class="code">02</span><span class="name">Memory</span></button>
+      <button class="wp" data-layer="l03" style="left:38.5%;top:59.1%" role="tab" aria-selected="false" aria-controls="l03"><span class="sym"></span><span class="code">03</span><span class="name">Agent tools</span></button>
+      <button class="wp" data-layer="l04" style="left:50%;top:49.4%"   role="tab" aria-selected="false" aria-controls="l04"><span class="sym"></span><span class="code">04</span><span class="name">Intelligence</span></button>
+      <button class="wp docs" data-layer="l05" style="left:61.5%;top:39.7%" role="tab" aria-selected="false" aria-controls="l05"><span class="sym"></span><span class="code">05</span><span class="name">Research</span></button>
+      <button class="wp" data-layer="l06" style="left:73%;top:30%"     role="tab" aria-selected="false" aria-controls="l06"><span class="sym"></span><span class="code">06</span><span class="name">AI agent</span></button>
+      <button class="wp docs" data-layer="l07" style="left:84.5%;top:20.3%" role="tab" aria-selected="false" aria-controls="l07"><span class="sym"></span><span class="code">07</span><span class="name">LLM ops</span></button>
+      <button class="wp" data-layer="l08" style="left:96%;top:10.6%"   role="tab" aria-selected="false" aria-controls="l08"><span class="sym"></span><span class="code">&#9992;</span><span class="name">Wrap-up</span></button>
+    </div>
+
+    <div class="panels">
+
+      <div class="panel active" id="l00" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 00</span><h2>Bones</h2></div>
+        <div>
+          <h4>What it adds</h4>
+          <p>The extracted flight-booking system: REST API, booking UI, admin panel, auth, seed data — plus a new build: <strong>WebRTC voice</strong> in the admin panel. Place and receive calls to any user. The admin becomes a mini human agent, no tools yet.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>Account setup, a toll-free number, TwiML app + voice webhooks, API keys, <code>.env</code>.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr"><span><span class="dot conv"></span>Voice foundation for everything above</span></div>
+        </div>
+        <div class="nav"><button class="next" data-next="l01">Next leg &rarr; 01 Orchestrator</button></div>
+      </div>
+
+      <div class="panel" id="l01" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 01</span><h2>Orchestrator</h2></div>
+        <div>
+          <h4>What it adds</h4>
+          <p>Conversations Orchestrator with the AI agent deliberately <strong>stubbed</strong> — multi-threaded SMS lands in an admin chat interface alongside voice. You learn who Orchestrator is for and why, before any AI exists.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>Toll-free / 10DLC approval (a hard pre-req), Orchestrator configuration, capture rules, webhook wiring.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr"><span><span class="dot conv"></span>Orchestrator: routing &amp; capture</span></div>
+        </div>
+        <div class="nav"><button class="next" data-next="l02">Next leg &rarr; 02 Memory</button></div>
+      </div>
+
+      <div class="panel" id="l02" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 02</span><h2>Memory</h2></div>
+        <div>
+          <h4>What it adds</h4>
+          <p>Conversation Memory keyed to the user (de-referenced by phone number), surfaced to the admin before, during, and after conversations. You text yourself and <strong>watch memories form</strong> in real time.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>Memory configuration and association.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr"><span><span class="dot conv"></span>Memory: identity &amp; context</span></div>
+        </div>
+        <div class="nav"><button class="next" data-next="l03">Next leg &rarr; 03 Agent tools</button></div>
+      </div>
+
+      <div class="panel" id="l03" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 03</span><h2>Agent tools</h2></div>
+        <div>
+          <h4>What it adds</h4>
+          <p>The full agent tool set — rebook, seat change, upgrades — as admin-gated actions on another user's behalf. The "call in and get something done" experience, with a <strong>human in the agent seat</strong>. These are the exact tools the AI inherits later.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>No new Console work — this layer lives entirely in the app.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr"><span><span class="dot agent"></span>Tools before intelligence</span></div>
+        </div>
+        <div class="nav"><button class="next" data-next="l04">Next leg &rarr; 04 Intelligence</button></div>
+      </div>
+
+      <div class="panel" id="l04" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 04</span><h2>Intelligence</h2></div>
+        <div>
+          <h4>What it adds</h4>
+          <p>Conversation Intelligence operators — summaries, follow-up texts, upgrade detection — driving live triggers on the admin panel. This is the <strong>"value without AI agents" plateau</strong>: real intelligence, human still in the seat.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>Operator authoring, associations to Memory and Orchestrator, webhooks.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr">
+            <span><span class="dot conv"></span>Intelligence: operators &amp; triggers</span>
+            <span><span class="dot agent"></span>Signals an agent can act on</span>
+          </div>
+        </div>
+        <div class="nav"><button class="next" data-next="l05">Next leg &rarr; 05 Research</button></div>
+      </div>
+
+      <div class="panel docs-only" id="l05" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 05</span><h2>Agentic research</h2><span class="chip">Docs-only</span></div>
+        <div>
+          <h4>What it covers</h4>
+          <p>The customer PM's journey: shopping and evaluating AI agents, technical fit with CRM and customer data, capabilities, <strong>permissions, security, and prompt injection</strong> — ending in the implementation plan Layer 06 will follow.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>None — a reading and research layer.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr">
+            <span><span class="dot ent"></span>Evaluation, security, risk</span>
+            <span><span class="dot agent"></span>Planning the agent build</span>
+          </div>
+        </div>
+        <div class="nav"><button class="next" data-next="l06">Next leg &rarr; 06 AI agent</button></div>
+      </div>
+
+      <div class="panel" id="l06" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 06</span><h2>AI agent</h2></div>
+        <div>
+          <h4>What it adds</h4>
+          <p>The AI takes the seat. An agent loop on an OpenAI-compatible API runs calls and SMS, recalls Memory, reacts to Intelligence triggers, invokes every Layer&nbsp;03 tool — and <strong>hands off to the human agent with full context</strong> when it should.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>Per the implementation plan written in Layer 05.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr">
+            <span><span class="dot agent"></span>The full agentic loop</span>
+            <span><span class="dot conv"></span>Every suite piece, working together</span>
+          </div>
+        </div>
+        <div class="nav"><button class="next" data-next="l07">Next leg &rarr; 07 LLM ops</button></div>
+      </div>
+
+      <div class="panel docs-only" id="l07" role="tabpanel">
+        <div class="head"><span class="fl">LAYER 07</span><h2>LLM ops</h2><span class="chip">Docs-only</span></div>
+        <div>
+          <h4>What it covers</h4>
+          <p>Where prompts live at enterprise scale: versioned prompt management with non-engineer editing and rollback, tracing and observability, and <strong>evals as promotion gates</strong>. You find the exact seams in Layer 06's code where this plugs in.</p>
+        </div>
+        <div class="lab">
+          <h4>In the Console</h4>
+          <p>None — a reading layer, worked against Layer 06's code.</p>
+          <h4 style="margin-top:12px">Tracks</h4>
+          <div class="tr"><span><span class="dot ent"></span>Operating LLMs in production</span></div>
+        </div>
+        <div class="nav"><button class="next" data-next="l08">Final leg &rarr; Wrap-up</button></div>
+      </div>
+
+      <div class="panel" id="l08" role="tabpanel">
+        <div class="head"><span class="fl">ARRIVAL</span><h2>Wrap-up</h2></div>
+        <div>
+          <h4>What it covers</h4>
+          <p>Lessons and concessions — why and how you'd build this for real. The cumulative <strong>enterprise architecture doc</strong>, every Console step in one place, and holistic sample conversations that exercise the whole stack.</p>
+        </div>
+        <div class="lab">
+          <h4>Tracks</h4>
+          <div class="tr">
+            <span><span class="dot conv"></span>The suite, end to end</span>
+            <span><span class="dot agent"></span>Human agent &rarr; AI agent, complete</span>
+            <span><span class="dot ent"></span>The story you tell customers</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="outcome">
+    <h3>What comes out the other end</h3>
+    <p>An SE who has configured <strong>Orchestrator, Memory, and Intelligence by hand</strong>, watched a human agent
+    become an AI agent one layer at a time, and can speak from experience to the questions enterprises actually ask —
+    security, permissions, prompt injection, and how you run prompts in production.</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  var wps = Array.prototype.slice.call(document.querySelectorAll('.wp'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+  var legs = Array.prototype.slice.call(document.querySelectorAll('.leg'));
+
+  function select(id, focusPanel){
+    var idx = wps.findIndex(function(w){ return w.dataset.layer === id; });
+    if (idx < 0) return;
+    wps.forEach(function(w,i){ w.setAttribute('aria-selected', i===idx ? 'true' : 'false'); });
+    panels.forEach(function(p){ p.classList.toggle('active', p.id === id); });
+    legs.forEach(function(l){ l.classList.toggle('flown', Number(l.dataset.seg) < idx); });
+    if (focusPanel){
+      var p = document.getElementById(id);
+      if (p) p.scrollIntoView({block:'nearest'});
+    }
+  }
+
+  wps.forEach(function(w){
+    w.addEventListener('click', function(){ select(w.dataset.layer, false); });
+  });
+  document.querySelectorAll('.next').forEach(function(b){
+    b.addEventListener('click', function(){ select(b.dataset.next, true); });
+  });
+})();
+</script>
+</body>
+</html>
