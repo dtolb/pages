@@ -18,6 +18,7 @@
     --twilio:#EF223A;
     --eleven:#5B4BD1;
     --flex:#2E6FA3;
+    --backend:#4D5777;
 
     /* decision outcomes */
     --ok:#2E7D5B;
@@ -169,6 +170,63 @@
   .col-twilio a:hover{color:var(--twilio);border-color:var(--twilio)}
   .docs .desc{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;border:none}
 
+  /* ---------- context handoff (semi-technical) ---------- */
+  .handoff{margin:52px 0 0;border-top:1px solid var(--line);padding-top:30px}
+  .handoff > h3{font-family:var(--display);font-size:20px;font-weight:600;margin-bottom:4px}
+  .handoff > .sub{color:var(--muted);font-size:14px;margin-bottom:22px;max-width:720px}
+  .handoff > .sub strong{color:var(--ink);font-weight:600}
+
+  .corr-bar{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:#FBFCFD;border:1px solid var(--line);border-left:3px solid var(--ink);
+    padding:12px 16px;margin:0 0 30px;font-size:13.5px;color:var(--muted);line-height:1.5;
+  }
+  .corr-bar .k{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink);white-space:nowrap;
+  }
+  .corr-bar strong{color:var(--ink);font-weight:600}
+
+  /* backend / neutral system */
+  .tag.backend{--c:var(--backend)}
+  .dot.backend{background:var(--backend)}
+
+  /* data-plane band: keep cards their natural height */
+  .band.center{align-items:center}
+  .stack{display:flex;flex-direction:column;gap:10px;flex:1 1 0;min-width:182px;max-width:250px;justify-content:center}
+  .stack .node{flex:0 0 auto;max-width:none}
+
+  /* voice-plane conference gantt */
+  .conf{margin:6px 0 0}
+  .gantt{display:flex;gap:16px;margin-top:26px}
+  .gcol-labels{display:flex;flex-direction:column;gap:12px;flex:0 0 104px;padding-top:1px}
+  .gcol-labels .who{
+    height:22px;display:flex;align-items:center;justify-content:flex-end;
+    font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--ink);text-align:right;
+  }
+  .gcol-plot{position:relative;flex:1 1 auto;display:flex;flex-direction:column;gap:12px}
+  .gcol-plot .track{position:relative;height:22px;background:var(--field);border:1px solid var(--line);border-radius:3px}
+  .gcol-plot .bar{
+    position:absolute;top:-1px;height:22px;border-radius:3px;
+    display:flex;align-items:center;padding:0 9px;color:#fff;
+    font-family:var(--mono);font-size:10px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;
+  }
+  .bar.cust{background:var(--ink)}
+  .bar.ai{background:var(--eleven)}
+  .bar.human{background:var(--flex)}
+  .gcol-plot .marker{position:absolute;top:-8px;bottom:-8px;left:61%;width:0;border-left:1.5px dashed var(--ok);z-index:3}
+  .gcol-plot .marker .mlabel{
+    position:absolute;top:-16px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ok);
+  }
+  .conf-note{margin-top:14px;font-size:13.5px;color:var(--muted);max-width:720px}
+  .conf-note strong{color:var(--ink);font-weight:600}
+  .plane-note{
+    font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);
+    text-align:center;margin:22px 0 0;
+  }
+  .plane-note .diamond{color:var(--ink)}
+
   /* ---------- mobile ---------- */
   @media (max-width:760px){
     .band{flex-direction:column;align-items:center;gap:0}
@@ -177,6 +235,8 @@
     .fork{gap:20px}
     .fork .prong:first-child{order:-1}
     .docs-grid{grid-template-columns:1fr;gap:24px}
+    .gcol-labels{flex-basis:78px}
+    .gcol-plot .bar{font-size:9px;padding:0 6px}
   }
   @media (prefers-reduced-motion:reduce){
     *{transition:none !important}
@@ -308,6 +368,84 @@
     closing &mdash; already briefed.</p>
   </section>
 
+  <section class="handoff" aria-label="Context handoff">
+    <h3>Context handoff &mdash; preserving the data through steps 06&ndash;08</h3>
+    <p class="sub">The point of the flow: the <strong>HubSpot lead data</strong> and <strong>what happened
+    on the call</strong> both have to reach the human. One correlation ID ties them together; the live call
+    stays in a single conference so the conversation survives the swap.</p>
+
+    <div class="corr-bar">
+      <span class="k">&#9670;&nbsp;Correlation&nbsp;ID</span>
+      <span>The conversation ID / Call SID that joins the <strong>call</strong>, the
+      <strong>TaskRouter Task</strong>, and the <strong>conference</strong> &mdash; the room is named for the
+      Task SID, so voice and data share one key.</span>
+    </div>
+
+    <!-- ===== DATA PLANE ===== -->
+    <p class="phase-label"><b>Data plane</b> &mdash; assemble &amp; surface</p>
+    <div class="band center">
+      <div class="stack">
+        <div class="node" style="--accent:var(--hubspot)">
+          <div class="top"><span class="num">IN</span></div>
+          <h3>HubSpot lead</h3>
+          <p>Snapshotted at trigger &mdash; and injected into the call as dynamic variables.</p>
+          <div class="tags"><span class="tag hubspot">HubSpot</span></div>
+        </div>
+        <div class="node" style="--accent:var(--eleven)">
+          <div class="top"><span class="num">IN</span></div>
+          <h3>Call outcome</h3>
+          <p>Validation result + collected fields, pushed live via a webhook tool.</p>
+          <div class="tags"><span class="tag eleven">ElevenLabs</span></div>
+        </div>
+      </div>
+      <div class="h-arrow" aria-hidden="true"></div>
+      <div class="node" style="--accent:var(--backend)">
+        <div class="top"><span class="num">MERGE</span></div>
+        <h3>Context store</h3>
+        <p>Merged record keyed by the correlation ID &mdash; one source of truth.</p>
+        <div class="tags"><span class="tag backend">Your backend</span></div>
+      </div>
+      <div class="h-arrow" aria-hidden="true"></div>
+      <div class="node" style="--accent:var(--twilio)">
+        <div class="top"><span class="num">ATTACH</span></div>
+        <h3>TaskRouter Task</h3>
+        <p>Attributes = HubSpot + call context + conference SID.</p>
+        <div class="tags"><span class="tag twilio">Twilio</span></div>
+      </div>
+      <div class="h-arrow" aria-hidden="true"></div>
+      <div class="node" style="--accent:var(--flex)">
+        <div class="top"><span class="num">SURFACE</span></div>
+        <h3>Flex screen-pop</h3>
+        <p>Renders the attributes; a panel can re-fetch by ID. Agent sees it all before &ldquo;hello.&rdquo;</p>
+        <div class="tags"><span class="tag flex">Flex</span></div>
+      </div>
+    </div>
+
+    <p class="plane-note"><span class="diamond">&#9670;</span> same correlation ID &mdash; room name = Task SID &mdash; ties the data plane to the voice plane below</p>
+
+    <!-- ===== VOICE PLANE ===== -->
+    <p class="phase-label" style="margin-top:30px"><b>Voice plane</b> &mdash; one persistent conference</p>
+    <div class="conf">
+      <div class="gantt" role="img" aria-label="Conference timeline: the customer stays connected the whole call; the AI agent validates, pushes context, then leaves at handoff; the human agent joins the same room, already briefed.">
+        <div class="gcol-labels">
+          <div class="who">Customer</div>
+          <div class="who">AI agent</div>
+          <div class="who">Human agent</div>
+        </div>
+        <div class="gcol-plot">
+          <div class="marker"><span class="mlabel">Handoff &middot; lead valid &#10003;</span></div>
+          <div class="track"><div class="bar cust" style="left:0;right:0">stays connected &mdash; one room, start to finish</div></div>
+          <div class="track"><div class="bar ai" style="left:0;width:61%">validate &middot; push context &middot; leave</div></div>
+          <div class="track"><div class="bar human" style="left:61%;right:0">joins the same room &mdash; already briefed</div></div>
+        </div>
+      </div>
+      <p class="conf-note">The customer sits in one conference the entire time, so the swap is just
+      <strong>add the human leg, drop the AI leg</strong> &mdash; if the AI leg fails, the room and the
+      conversation survive. This is why a conference beats a SIP&nbsp;REFER for real calls, and it unlocks
+      recording and per-participant hold / coach / barge for free.</p>
+    </div>
+  </section>
+
   <section class="docs" aria-label="Documentation">
     <h3>Documentation</h3>
     <p class="sub">Reference for the two build platforms in this flow.</p>
@@ -335,6 +473,18 @@
           <li>
             <a href="https://elevenlabs.io/docs/eleven-agents/customization/tools/system-tools/agent-transfer" target="_blank" rel="noopener">Agent transfer &mdash; system tool</a>
             <span class="desc">Route between agents when a specialist is needed.</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/customization/personalization/dynamic-variables" target="_blank" rel="noopener">Dynamic variables</a>
+            <span class="desc">Inject the HubSpot lead data into the call at start.</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/customization/tools/webhook-tools" target="_blank" rel="noopener">Webhook tools</a>
+            <span class="desc">Push the call outcome to your backend live, mid-call.</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/workflows/post-call-webhooks" target="_blank" rel="noopener">Post-call webhooks</a>
+            <span class="desc">Transcript + analysis after the call &mdash; for the HubSpot write-back.</span>
           </li>
         </ul>
       </div>
