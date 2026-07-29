@@ -64,6 +64,8 @@
   .dot.twilio{background:var(--twilio)}
   .dot.eleven{background:var(--eleven)}
   .dot.flex{background:var(--flex)}
+  .legend-note{font-size:13px;color:var(--muted);margin-top:8px}
+  .legend-note strong{color:var(--ink);font-weight:600}
 
   /* ---------- flow ---------- */
   .flow{margin:44px 0 0}
@@ -88,14 +90,21 @@
   .node p{font-size:13px;color:var(--muted);line-height:1.5}
   .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:4px}
   .tag{
+    --c:var(--muted);
     font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
-    padding:2px 7px;border-radius:2px;border:1px solid currentColor;line-height:1.5;
+    padding:2px 7px;border-radius:2px;border:1px solid var(--c);color:var(--c);line-height:1.5;
+    white-space:nowrap;
   }
-  .tag.hubspot{color:var(--hubspot)}
-  .tag.nerdwallet{color:var(--nerdwallet)}
-  .tag.twilio{color:var(--twilio)}
-  .tag.eleven{color:var(--eleven)}
-  .tag.flex{color:var(--flex)}
+  .tag.hubspot{--c:var(--hubspot)}
+  .tag.nerdwallet{--c:var(--nerdwallet)}
+  .tag.twilio{--c:var(--twilio)}
+  .tag.eleven{--c:var(--eleven)}
+  .tag.flex{--c:var(--flex)}
+  a.tag{text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+  a.tag::after{content:"\2197";margin-left:3px;font-size:8.5px;opacity:.55}
+  a.tag:hover{background:var(--c);color:#fff}
+  a.tag:hover::after{opacity:1}
+  a.tag:focus-visible{outline:2px solid var(--c);outline-offset:2px}
 
   /* decision node */
   .node.decision{background:#FBFCFD;border-style:dashed;justify-content:center;text-align:center}
@@ -141,6 +150,25 @@
   .outcome p{color:var(--muted);font-size:16px}
   .outcome p strong{color:var(--ink)}
 
+  /* ---------- documentation ---------- */
+  .docs{margin:52px 0 0;border-top:1px solid var(--line);padding-top:30px}
+  .docs > h3{font-family:var(--display);font-size:20px;font-weight:600;margin-bottom:4px}
+  .docs > .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
+  .docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 44px}
+  .docs h4{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;
+  }
+  .docs ul{list-style:none}
+  .docs li{margin-bottom:12px;line-height:1.4}
+  .docs a{
+    color:var(--ink);text-decoration:none;font-size:14.5px;
+    border-bottom:1px solid var(--line);padding-bottom:1px;transition:color .15s,border-color .15s;
+  }
+  .col-eleven a:hover{color:var(--eleven);border-color:var(--eleven)}
+  .col-twilio a:hover{color:var(--twilio);border-color:var(--twilio)}
+  .docs .desc{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;border:none}
+
   /* ---------- mobile ---------- */
   @media (max-width:760px){
     .band{flex-direction:column;align-items:center;gap:0}
@@ -148,6 +176,7 @@
     .h-arrow{transform:rotate(90deg);margin:10px 0}
     .fork{gap:20px}
     .fork .prong:first-child{order:-1}
+    .docs-grid{grid-template-columns:1fr;gap:24px}
   }
   @media (prefers-reduced-motion:reduce){
     *{transition:none !important}
@@ -172,6 +201,8 @@
       <span class="track"><span class="dot eleven"></span>ElevenLabs</span>
       <span class="track"><span class="dot flex"></span>Flex &mdash; human agent</span>
     </div>
+    <p class="legend-note">Tagged steps link out to the relevant <strong>ElevenLabs</strong> and
+    <strong>Twilio</strong> docs &mdash; full reference at the bottom.</p>
   </header>
 
   <section class="flow" aria-label="Outbound AI lead flow">
@@ -206,21 +237,21 @@
           <div class="top"><span class="num">03</span></div>
           <h3>Create the call</h3>
           <p>A call is created once an agent slot is available.</p>
-          <div class="tags"><span class="tag twilio">Twilio</span></div>
+          <div class="tags"><a class="tag twilio" href="https://www.twilio.com/docs/voice/tutorials/how-to-make-outbound-phone-calls" target="_blank" rel="noopener" title="Twilio · Make outbound phone calls">Twilio</a></div>
         </div>
         <div class="h-arrow" aria-hidden="true"></div>
         <div class="node" style="--accent:linear-gradient(90deg,var(--eleven),var(--twilio))">
           <div class="top"><span class="num">04</span></div>
           <h3>AI places the call</h3>
           <p>The AI voice agent dials the customer.</p>
-          <div class="tags"><span class="tag eleven">ElevenLabs</span><span class="tag twilio">Twilio</span></div>
+          <div class="tags"><a class="tag eleven" href="https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/native-integration" target="_blank" rel="noopener" title="ElevenLabs · Twilio native integration (outbound calls)">ElevenLabs</a><a class="tag twilio" href="https://www.twilio.com/docs/voice/media-streams" target="_blank" rel="noopener" title="Twilio · Media Streams (real-time call audio)">Twilio</a></div>
         </div>
         <div class="h-arrow" aria-hidden="true"></div>
         <div class="node" style="--accent:linear-gradient(90deg,var(--eleven),var(--twilio))">
           <div class="top"><span class="num">05</span></div>
           <h3>Validate the lead</h3>
           <p>The AI agent confirms the lead on the call.</p>
-          <div class="tags"><span class="tag eleven">ElevenLabs</span><span class="tag twilio">Twilio</span></div>
+          <div class="tags"><a class="tag eleven" href="https://elevenlabs.io/docs/eleven-agents/quickstart" target="_blank" rel="noopener" title="ElevenLabs · Agents quickstart (build the agent)">ElevenLabs</a><a class="tag twilio" href="https://www.twilio.com/docs/voice/api" target="_blank" rel="noopener" title="Twilio · Programmable Voice API">Twilio</a></div>
         </div>
       </div>
 
@@ -236,15 +267,15 @@
 
       <!-- ============ DECISION FORK ============ -->
       <div class="fork">
-      <div class="prong">
-        <span class="plabel yes">Lead valid &#10003;</span>
-        <span class="v-arrow ok" aria-hidden="true"></span>
-      </div>
-      <div class="prong">
-        <span class="plabel no">Not valid &#10007;</span>
-        <span class="v-arrow no" aria-hidden="true"></span>
-        <div class="terminal">AI wraps up the call and logs the disposition &mdash; no transfer.</div>
-      </div>
+        <div class="prong">
+          <span class="plabel yes">Lead valid &#10003;</span>
+          <span class="v-arrow ok" aria-hidden="true"></span>
+        </div>
+        <div class="prong">
+          <span class="plabel no">Not valid &#10007;</span>
+          <span class="v-arrow no" aria-hidden="true"></span>
+          <div class="terminal">AI wraps up the call and logs the disposition &mdash; no transfer.</div>
+        </div>
       </div>
     </div>
 
@@ -256,14 +287,14 @@
           <div class="top"><span class="num">07</span></div>
           <h3>Compile handoff</h3>
           <p>The AI packages the call context for the human agent.</p>
-          <div class="tags"><span class="tag eleven">ElevenLabs</span></div>
+          <div class="tags"><a class="tag eleven" href="https://elevenlabs.io/docs/eleven-agents/customization/tools" target="_blank" rel="noopener" title="ElevenLabs · Agent tools (gather & pass structured data)">ElevenLabs</a></div>
         </div>
         <div class="h-arrow" aria-hidden="true"></div>
         <div class="node" style="--accent:linear-gradient(90deg,var(--eleven),var(--flex))">
           <div class="top"><span class="num">08</span></div>
           <h3>Transfer to human</h3>
           <p>The live call is handed to a Flex agent, context and all.</p>
-          <div class="tags"><span class="tag eleven">ElevenLabs</span><span class="tag twilio">Twilio</span><span class="tag flex">Flex</span></div>
+          <div class="tags"><a class="tag eleven" href="https://elevenlabs.io/docs/eleven-agents/customization/tools/system-tools/transfer-to-number" target="_blank" rel="noopener" title="ElevenLabs · Transfer to number (hand off to a human)">ElevenLabs</a><a class="tag twilio" href="https://www.twilio.com/docs/voice/tutorials/how-to-create-conference-calls" target="_blank" rel="noopener" title="Twilio · Conference calls (bridge for transfer)">Twilio</a><a class="tag flex" href="https://www.twilio.com/docs/flex/end-user-guide/warm-transfer" target="_blank" rel="noopener" title="Twilio Flex · Warm transfer to a human agent">Flex</a></div>
         </div>
       </div>
     </div>
@@ -275,6 +306,70 @@
     <p>A <strong>HubSpot trigger</strong> becomes a validated, warm-transferred conversation: the AI agent
     handles the outreach and qualifying, and a <strong>human agent in Flex</strong> picks up the ones worth
     closing &mdash; already briefed.</p>
+  </section>
+
+  <section class="docs" aria-label="Documentation">
+    <h3>Documentation</h3>
+    <p class="sub">Reference for the two build platforms in this flow.</p>
+    <div class="docs-grid">
+
+      <div class="col-eleven">
+        <h4><span class="dot eleven"></span>ElevenLabs</h4>
+        <ul>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/quickstart" target="_blank" rel="noopener">Agents &mdash; Quickstart</a>
+            <span class="desc">Build and configure the AI voice agent (steps 04&ndash;05).</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/native-integration" target="_blank" rel="noopener">Twilio native integration</a>
+            <span class="desc">Connect the agent to Twilio and place outbound calls (step 04).</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/customization/tools" target="_blank" rel="noopener">Agent tools</a>
+            <span class="desc">Gather and pass the structured handoff details (step 07).</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/customization/tools/system-tools/transfer-to-number" target="_blank" rel="noopener">Transfer to number &mdash; system tool</a>
+            <span class="desc">Hand the live call off to a human (step 08).</span>
+          </li>
+          <li>
+            <a href="https://elevenlabs.io/docs/eleven-agents/customization/tools/system-tools/agent-transfer" target="_blank" rel="noopener">Agent transfer &mdash; system tool</a>
+            <span class="desc">Route between agents when a specialist is needed.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="col-twilio">
+        <h4><span class="dot twilio"></span>Twilio</h4>
+        <ul>
+          <li>
+            <a href="https://www.twilio.com/docs/voice/tutorials/how-to-make-outbound-phone-calls" target="_blank" rel="noopener">Make outbound phone calls</a>
+            <span class="desc">Create the call via Programmable Voice (step 03).</span>
+          </li>
+          <li>
+            <a href="https://www.twilio.com/docs/voice/api" target="_blank" rel="noopener">Programmable Voice API</a>
+            <span class="desc">Calls REST API &mdash; create and control calls.</span>
+          </li>
+          <li>
+            <a href="https://www.twilio.com/docs/voice/media-streams" target="_blank" rel="noopener">Media Streams</a>
+            <span class="desc">Real-time call audio to and from the AI agent (step 04).</span>
+          </li>
+          <li>
+            <a href="https://www.twilio.com/docs/voice/tutorials/how-to-create-conference-calls" target="_blank" rel="noopener">Conference calls</a>
+            <span class="desc">Bridge parties to move the live call (step 08).</span>
+          </li>
+          <li>
+            <a href="https://www.twilio.com/docs/flex/end-user-guide/warm-transfer" target="_blank" rel="noopener">Flex &mdash; warm transfer</a>
+            <span class="desc">Hand off to a human agent in Flex (step 08).</span>
+          </li>
+          <li>
+            <a href="https://www.twilio.com/docs/taskrouter/contact-center-blueprint/call-control-concepts" target="_blank" rel="noopener">TaskRouter &mdash; warm transfer flow</a>
+            <span class="desc">Route the handoff task to the right agent.</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
   </section>
 
 </div>
