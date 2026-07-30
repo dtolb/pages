@@ -408,6 +408,7 @@ git commit -m "feat: add shared type contract with documented field hazards"
 
 **Files:**
 - Create: `tests/architecture.test.ts`
+- Note: the banned-import regex is built by a shared helper so both rules stay in sync, and it catches `from`, side-effect, `require()`, and dynamic-`import()` shapes plus subpaths. The walk scans `.ts` and `.tsx`.
 
 **Interfaces:**
 - Consumes: nothing.
@@ -425,27 +426,42 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-/** Recursively collect .ts files under dir. Returns [] if dir does not exist. */
+/** Recursively collect .ts/.tsx files under dir. Returns [] if dir does not exist. */
 function tsFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
   const out: string[] = []
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
     if (statSync(full).isDirectory()) out.push(...tsFiles(full))
-    else if (entry.endsWith('.ts')) out.push(full)
+    else if (entry.endsWith('.ts') || entry.endsWith('.tsx')) out.push(full)
   }
   return out
+}
+
+/**
+ * Build a regex that catches every realistic way `pkg` could be imported:
+ *   - `import x from 'pkg'` / `import { x } from 'pkg'` / `export { x } from 'pkg'`
+ *   - subpath imports, e.g. `from 'pkg/lib/x'`
+ *   - side-effect imports: `import 'pkg'`
+ *   - CommonJS: `require('pkg')`
+ *   - dynamic imports: `import('pkg')` / `await import('pkg')`
+ * A single builder guarantees both banned-package rules stay in sync.
+ */
+function bannedImportPattern(pkg: string): RegExp {
+  const escaped = pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const opener = `(?:\\bfrom\\s+|\\bimport\\s*\\(?\\s*|\\brequire\\s*\\(\\s*)`
+  return new RegExp(`${opener}['"]${escaped}(?:['"]|/)`)
 }
 
 const RULES = [
   {
     dir: 'server/poc',
-    banned: /from\s+['"]twilio(\/|['"])/,
+    banned: bannedImportPattern('twilio'),
     label: "server/poc must not import 'twilio'",
   },
   {
     dir: 'web/sentinel',
-    banned: /from\s+['"]@twilio\/voice-sdk/,
+    banned: bannedImportPattern('@twilio/voice-sdk'),
     label: "web/sentinel must not import '@twilio/voice-sdk'",
   },
 ]
@@ -469,26 +485,57 @@ test('the guarded directories are the ones the spec names', () => {
 Run: `cd ~/code/aci-quality-poc && pnpm test`
 Expected: 3 new tests pass (the guarded dirs don't exist yet, so there are no offenders).
 
-Now prove the test actually detects a violation:
+Now prove the test actually detects violations. A guard that cannot fail is worthless, so exercise **all four import shapes against both packages** — eight cases. For each: create the file, run the test, confirm it fails and names the file, delete the file.
 
 ```bash
 cd ~/code/aci-quality-poc
-mkdir -p server/poc
-printf "import twilio from 'twilio'\nexport const x = twilio\n" > server/poc/__violation.ts
-pnpm test 2>&1 | grep -A2 "must not import"
+mkdir -p server/poc web/sentinel
+
+# 'twilio' in server/poc — four shapes
+printf "import twilio from 'twilio'\nexport const x = twilio\n" > server/poc/v.ts
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'server/poc/v.ts'"
+printf "import 'twilio'\n"            > server/poc/v.ts   # side-effect
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'server/poc/v.ts'"
+printf "const t = require('twilio')\nexport default t\n" > server/poc/v.ts   # CommonJS
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'server/poc/v.ts'"
+printf "await import('twilio')\n"     > server/poc/v.ts   # dynamic
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'server/poc/v.ts'"
+rm -f server/poc/v.ts
+
+# '@twilio/voice-sdk' in web/sentinel — same four, one of them in a .tsx
+printf "import { Device } from '@twilio/voice-sdk'\nexport const d = Device\n" > web/sentinel/v.tsx
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'web/sentinel/v.tsx'"
+rm -f web/sentinel/v.tsx
+printf "import '@twilio/voice-sdk'\n" > web/sentinel/v.ts
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'web/sentinel/v.ts'"
+printf "const s = require('@twilio/voice-sdk')\nexport default s\n" > web/sentinel/v.ts
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'web/sentinel/v.ts'"
+printf "await import('@twilio/voice-sdk')\n" > web/sentinel/v.ts
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'web/sentinel/v.ts'"
+rm -f web/sentinel/v.ts
 ```
 
-Expected: FAIL on `server/poc must not import 'twilio'`, listing `server/poc/__violation.ts`.
+Expected: every one of the eight runs FAILS the matching rule and names the offending file. If any shape passes, the regex is wrong — stop and report it.
 
-- [ ] **Step 3: Remove the deliberate violation and confirm green**
+Also confirm a subpath import is caught, since that is the shape most likely to be missed:
+
+```bash
+printf "export { X } from 'twilio/lib/sub'\n" > server/poc/v.ts
+node --test tests/architecture.test.ts 2>&1 | grep -E "^\u2716|'server/poc/v.ts'"
+rm -f server/poc/v.ts
+```
+
+- [ ] **Step 3: Remove all probe files and directories, confirm green**
 
 ```bash
 cd ~/code/aci-quality-poc
-rm server/poc/__violation.ts
-pnpm test
+rm -f server/poc/v.ts web/sentinel/v.ts web/sentinel/v.tsx
+rmdir server/poc server web/sentinel web 2>/dev/null
+git status --short   # must be empty
+pnpm test && pnpm typecheck
 ```
 
-Expected: all tests pass.
+Expected: `git status` empty, all tests pass, typecheck exits 0. The guarded directories must NOT exist after this task — later tasks create them.
 
 - [ ] **Step 4: Commit**
 
