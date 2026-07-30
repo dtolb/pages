@@ -10,14 +10,17 @@
 
 **Spec:** `~/code/pages/docs/superpowers/specs/2026-07-30-aci-quality-poc-design.md` @ `09be198`
 
-**Verification status:** every code block in this plan was assembled into a scratch project and executed before the plan was committed. Result: **46/46 tests pass**, `tsc --noEmit` exits 0 under `strict` + `noUncheckedIndexedAccess` + `erasableSyntaxOnly` + `verbatimModuleSyntax` (TypeScript 5.9.3, `@types/node` 24.13.2), and the architecture test was confirmed to fail and name the offending file when a forbidden import is introduced. The code here is known-good — if you hit a compile error or a red test, suspect a transcription slip rather than the plan.
+**Verification status:** every code block in this plan was assembled into a scratch project and executed before the plan was committed, then re-verified after the shared-fixtures refactor. Result: **46/46 tests pass**, `tsc --noEmit` exits 0 under `strict` + `noUncheckedIndexedAccess` + `erasableSyntaxOnly` + `verbatimModuleSyntax` (TypeScript 5.9.3, `@types/node` 24.13.2), the architecture test was confirmed to fail and name the offending file when a forbidden import is introduced, and `tests/fixtures.ts` was confirmed not to be collected as a test file. The code here is known-good — if you hit a compile error or a red test, suspect a transcription slip rather than the plan.
 
 ## Global Constraints
 
 Every task's requirements implicitly include this section.
 
-- **Repo:** `~/code/aci-quality-poc`. All paths in this plan are relative to it.
+- **Repo:** `~/code/aci-quality-poc`. All relative paths in this plan are relative to it. Task 8 is the one exception and edits a file in `~/code/pages` — it states an absolute path.
+- **Branch:** Task 1 runs `git init`; all eight commits land on the new repo's `main`. There is no pre-existing history to protect.
 - **Node 24, pnpm.** Verified present: Node v24.18.0, pnpm 11.8.0.
+- **Test fixtures are shared via `tests/fixtures.ts`.** Test files import `sample()`, `windowAtMos()`, `call()`, and `event()` from there rather than redefining them. The module is built up incrementally — each task adds only the fixture its own tests need.
+- **The test directory MUST be named `tests/` (plural).** Node's test runner treats every file inside a directory named `test/` (singular) as a test file, which would make it try to execute `fixtures.ts`. With `tests/`, only `*.test.ts` is collected. Verified: `tests/fixtures.ts` is correctly ignored.
 - **Relative imports MUST carry the `.ts` extension** (`from './window.ts'`). Node's type-stripping requires it; omitting it fails at runtime.
 - **`package.json` must set `"type": "module"`.**
 - **Zero runtime dependencies in this plan.** `node:sqlite` and `node:test` are built in. The only devDependency is `typescript`.
@@ -484,23 +487,22 @@ git commit -m "test: enforce the twilio/poc dependency rule"
 
 **Files:**
 - Create: `web/sentinel/window.ts`
+- Create: `tests/fixtures.ts`
 - Test: `tests/window.test.ts`
 
 **Interfaces:**
 - Consumes: `QualitySample` from `shared/types.ts`.
-- Produces: `WINDOW_SIZE: number`, and `class SampleWindow` with `push(s: QualitySample): void`, `get size(): number`, `p50Mos(): number | null`, `latest(): QualitySample | null`, `all(): readonly QualitySample[]`. Task 5 consumes `p50Mos()`; Task 6 consumes `latest()`.
+- Produces: `WINDOW_SIZE: number`, and `class SampleWindow` with `push(s: QualitySample): void`, `get size(): number`, `p50Mos(): number | null`, `latest(): QualitySample | null`, `all(): readonly QualitySample[]`. Task 5 consumes `p50Mos()`; Task 6 consumes `latest()`. Also produces `tests/fixtures.ts` exporting `sample(over?: Partial<QualitySample>): QualitySample`, which Tasks 5, 6, and 7 extend and import.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1a: Create the shared fixture module**
 
-Create `tests/window.test.ts`:
+Create `tests/fixtures.ts`. Later tasks append to this file; do not duplicate these helpers into individual test files.
 
 ```typescript
-import { test } from 'node:test'
-import assert from 'node:assert/strict'
-import { SampleWindow, WINDOW_SIZE } from '../web/sentinel/window.ts'
 import type { QualitySample } from '../shared/types.ts'
 
-function sample(over: Partial<QualitySample> = {}): QualitySample {
+/** A healthy 1 Hz sample. Override only the fields a test cares about. */
+export function sample(over: Partial<QualitySample> = {}): QualitySample {
   return {
     ts: 0,
     mos: 4.2,
@@ -515,6 +517,17 @@ function sample(over: Partial<QualitySample> = {}): QualitySample {
     ...over,
   }
 }
+```
+
+- [ ] **Step 1b: Write the failing test**
+
+Create `tests/window.test.ts`:
+
+```typescript
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { SampleWindow, WINDOW_SIZE } from '../web/sentinel/window.ts'
+import { sample } from './fixtures.ts'
 
 test('window is 10 samples', () => {
   assert.equal(WINDOW_SIZE, 10)
@@ -632,7 +645,7 @@ Expected: 8 window tests pass; typecheck exits 0.
 
 ```bash
 cd ~/code/aci-quality-poc
-git add web/sentinel/window.ts tests/window.test.ts
+git add web/sentinel/window.ts tests/fixtures.ts tests/window.test.ts
 git commit -m "feat: add sentinel sample window with null-safe median MOS"
 ```
 
@@ -642,13 +655,31 @@ git commit -m "feat: add sentinel sample window with null-safe median MOS"
 
 **Files:**
 - Create: `web/sentinel/verdict.ts`
+- Modify: `tests/fixtures.ts` (append `windowAtMos`)
 - Test: `tests/verdict.test.ts`
 
 **Interfaces:**
-- Consumes: `SampleWindow` from `web/sentinel/window.ts`; `Verdict`, `WarningName`, `CATEGORICAL_FAULTS` from `shared/types.ts`.
-- Produces: `MOS_BANDS: { good: number; fair: number; degraded: number }`, `type VerdictInput`, and `computeVerdict(input: VerdictInput): Verdict`. Task 6 does not consume this; the UI in Plan 2 does.
+- Consumes: `SampleWindow` from `web/sentinel/window.ts`; `Verdict`, `WarningName`, `CATEGORICAL_FAULTS` from `shared/types.ts`; `sample` from `tests/fixtures.ts`.
+- Produces: `MOS_BANDS: { good: number; fair: number; degraded: number }`, `type VerdictInput`, and `computeVerdict(input: VerdictInput): Verdict`. Task 6 does not consume this; the UI in Plan 2 does. Also appends `windowAtMos(mos: number | null): SampleWindow` to `tests/fixtures.ts`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1a: Append `windowAtMos` to the fixture module**
+
+Add to `tests/fixtures.ts`, and add the `SampleWindow` import at the top of that file:
+
+```typescript
+import { SampleWindow } from '../web/sentinel/window.ts'
+
+// ... existing sample() ...
+
+/** A window of 5 samples all at the given MOS. */
+export function windowAtMos(mos: number | null): SampleWindow {
+  const w = new SampleWindow()
+  for (let i = 0; i < 5; i++) w.push(sample({ ts: i, mos }))
+  return w
+}
+```
+
+- [ ] **Step 1b: Write the failing test**
 
 Create `tests/verdict.test.ts`:
 
@@ -656,19 +687,8 @@ Create `tests/verdict.test.ts`:
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { computeVerdict, MOS_BANDS } from '../web/sentinel/verdict.ts'
-import { SampleWindow } from '../web/sentinel/window.ts'
-import type { QualitySample, WarningName } from '../shared/types.ts'
-
-function windowAtMos(mos: number | null): SampleWindow {
-  const w = new SampleWindow()
-  const base: QualitySample = {
-    ts: 0, mos, rttMs: 40, jitterMs: 5, lossPct: 0,
-    audioInLevel: 8000, audioOutLevel: 8000,
-    bytesSent: 1600, bytesReceived: 1600, codec: 'opus',
-  }
-  for (let i = 0; i < 5; i++) w.push({ ...base, ts: i })
-  return w
-}
+import type { WarningName } from '../shared/types.ts'
+import { windowAtMos } from './fixtures.ts'
 
 function verdictFor(
   mos: number | null,
@@ -797,7 +817,7 @@ Expected: 9 verdict tests pass; typecheck exits 0.
 
 ```bash
 cd ~/code/aci-quality-poc
-git add web/sentinel/verdict.ts tests/verdict.test.ts
+git add web/sentinel/verdict.ts tests/fixtures.ts tests/verdict.test.ts
 git commit -m "feat: add verdict state machine with contiguous MOS bands"
 ```
 
@@ -823,16 +843,8 @@ Create `tests/beacon.test.ts`:
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { BeaconEvaluator } from '../web/sentinel/beacon.ts'
-import type { BeaconConfig, QualitySample, WarningName } from '../shared/types.ts'
-
-function sample(over: Partial<QualitySample> = {}): QualitySample {
-  return {
-    ts: 0, mos: 4.2, rttMs: 40, jitterMs: 5, lossPct: 0,
-    audioInLevel: 8000, audioOutLevel: 8000,
-    bytesSent: 1600, bytesReceived: 1600, codec: 'opus',
-    ...over,
-  }
-}
+import type { BeaconConfig, WarningName } from '../shared/types.ts'
+import { sample } from './fixtures.ts'
 
 const NONE = new Set<WarningName>()
 
@@ -1093,24 +1105,24 @@ git commit -m "feat: add beacon evaluator with window-independent sustain tracki
 
 **Files:**
 - Create: `server/poc/store.ts`
+- Modify: `tests/fixtures.ts` (append `call` and `event`)
 - Test: `tests/store.test.ts`
 
 **Interfaces:**
 - Consumes: `CallLeg`, `Feedback`, `PaneEvent`, `Verdict` from `shared/types.ts`.
 - Produces: `type CallRow`, `type FeedbackRow`, and `class Store` with `constructor(path?: string)`, `close(): void`, `upsertCall(row: CallRow): void`, `endCall(callSid: string, endedAt: number, verdictWorst: Verdict): void`, `insertEvent(e: PaneEvent): boolean`, `eventsForCall(callSid: string): PaneEvent[]`, `insertFeedback(f: Feedback, annotation: { status: number; errorCode?: number; message?: string }): void`, `feedbackForCall(callSid: string): FeedbackRow[]`, `callsInConference(conferenceSid: string): CallRow[]`. Plan 3's routes consume all of these.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1a: Append `call` and `event` to the fixture module**
 
-Create `tests/store.test.ts`:
+Add to `tests/fixtures.ts`, along with the two imports at the top of that file:
 
 ```typescript
-import { test } from 'node:test'
-import assert from 'node:assert/strict'
-import { Store } from '../server/poc/store.ts'
 import type { CallRow } from '../server/poc/store.ts'
-import type { Feedback, PaneEvent } from '../shared/types.ts'
+import type { PaneEvent } from '../shared/types.ts'
 
-function call(over: Partial<CallRow> = {}): CallRow {
+// ... existing sample() and windowAtMos() ...
+
+export function call(over: Partial<CallRow> = {}): CallRow {
   return {
     callSid: 'CA1',
     conferenceSid: 'CF1',
@@ -1124,7 +1136,7 @@ function call(over: Partial<CallRow> = {}): CallRow {
   }
 }
 
-function event(over: Partial<PaneEvent> = {}): PaneEvent {
+export function event(over: Partial<PaneEvent> = {}): PaneEvent {
   return {
     id: 'e1',
     callSid: 'CA1',
@@ -1137,6 +1149,18 @@ function event(over: Partial<PaneEvent> = {}): PaneEvent {
     ...over,
   }
 }
+```
+
+- [ ] **Step 1b: Write the failing test**
+
+Create `tests/store.test.ts`:
+
+```typescript
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { Store } from '../server/poc/store.ts'
+import type { Feedback } from '../shared/types.ts'
+import { call, event } from './fixtures.ts'
 
 test('a call round-trips, including the instrumented flag', () => {
   const s = new Store()
@@ -1504,7 +1528,7 @@ Expected: 11 store tests pass; full suite green (**46 tests** — 3 types, 3 arc
 
 ```bash
 cd ~/code/aci-quality-poc
-git add server/poc/store.ts tests/store.test.ts
+git add server/poc/store.ts tests/fixtures.ts tests/store.test.ts
 git commit -m "feat: add sqlite store with idempotent event inserts"
 ```
 
