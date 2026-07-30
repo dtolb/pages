@@ -1,0 +1,5 @@
+# Playwright MCP artifacts (page snapshots, console logs, screenshots)
+.playwright-mcp/
+
+# macOS
+.DS_Store
