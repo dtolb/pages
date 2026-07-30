@@ -415,39 +415,80 @@ Two `calls` rows share a `conference_sid` after a codec switch (§8.4), which is
 
 ## 10. Setup script
 
-`pnpm setup:twilio` — idempotent, safe to re-run, and the primary provisioning path. It reads `.env`, reconciles Twilio-side state against what the app needs, changes only what is missing, and prints a report.
+`pnpm setup:twilio` — idempotent, safe to re-run, and the primary provisioning path.
 
-### 10.1 What it does
+### 10.1 Interaction model
 
-| Step | Action | Idempotency check |
+Four phases, in order. Nothing is written to the Twilio account before the confirmation prompt.
+
+```
+READ  →  PLAN  →  CONFIRM  →  APPLY  →  REPORT
+```
+
+**READ.** Fetch the current state of every resource the app needs. Read-only; no side effects.
+
+**PLAN.** Diff desired against actual and print every item with its disposition — `✓` already correct, `+` will create, `~` will update, `!` will overwrite a value someone else set. Nothing is hidden: items needing no action are still listed, so the output is a complete picture rather than only a delta.
+
+**CONFIRM.** Print the change count and prompt, **defaulting to No**. Skipped entirely when the plan is empty — there is nothing to confirm, so it reports "already configured, nothing to do" and exits 0. `--yes` skips the prompt for re-runs; `--dry-run` stops after PLAN.
+
+**APPLY.** Execute only the planned changes, printing each result as it completes. Then re-verify and print the resolved `.env` values.
+
+```
+$ pnpm setup:twilio
+
+Reading current Twilio state…
+
+PLAN — 2 changes, 4 already correct
+
+  ✓ Credentials          ACxxxx…  us1  (Standard key — can mint AccessTokens)
+  ✓ ACI state            advancedFeatures=false      ← left as-is by design
+  ! TwiML App            APxxxx…  'aci-poc-agent'
+      Request URL        https://old.example.com/voice
+                      →  https://aci-poc.twilio.dtolb.com/voice-agent
+  ✓ Phone number         +1512xxxxxxx  →  …/voice-inbound
+  + Event Streams sink   webhook  →  https://aci-poc.twilio.dtolb.com/aci-sink
+  · Subscription         pending — resolves after the sink exists
+
+  ! 1 change overwrites an existing value.
+
+Apply 2 changes? [y/N] y
+
+APPLYING
+
+  ~ TwiML App            APxxxx…  Request URL updated
+  + Event Streams sink   DGxxxx…  status active
+  + Subscription         DFxxxx…  5 types
+      call-event.sdk         schema 3
+      call-event.gateway     schema 3
+      call-metrics.sdk       schema 2
+      call-metrics.gateway   schema 2
+      call-summary.complete  schema 8
+  ✓ Sink smoke test      POST /Sinks/DGxxxx…/Test → received in 240ms
+
+RESULT — 2 applied, 0 failed
+
+  TWILIO_TWIML_APP_SID=APxxxx…
+  ACI_SINK_SID=DGxxxx…
+  ACI_SUBSCRIPTION_SID=DFxxxx…
+```
+
+Three details that matter for the implementation. **The plan is partially unknowable on a first run** — subscription state cannot be determined until the sink exists, so it is honestly marked `pending` rather than guessed at. **The `!` marker is reserved for overwriting a value the script did not set**, which is the only genuinely surprising action here (repointing a TwiML App or phone number that was aimed elsewhere) and is called out separately above the prompt. And confirmation uses `node:readline/promises`, keeping the zero-dependency posture already chosen for storage.
+
+### 10.2 What it reconciles
+
+| Item | Desired state | Idempotency check |
 |---|---|---|
-| 1 | Verify credentials by `GET /v1/Voice/Settings` | fails fast with a readable message |
-| 2 | Report current ACI state | read-only — **does not enable it** |
-| 3 | Ensure TwiML App exists with the right Voice URL | match on friendly name `aci-poc-agent`; create or update `VoiceUrl` |
-| 4 | Ensure the phone number's inbound voice webhook points at `/voice-inbound` | match on the configured number; update `VoiceUrl` if wrong |
-| 5 | Ensure Event Streams webhook sink exists | match on `Description`; reuse if found |
-| 6 | Ensure subscription exists with the five pinned types | reconcile via `SubscribedEvents` rather than recreating |
-| 7 | Smoke-test the sink | `POST /Sinks/{Sid}/Test` and confirm the endpoint received it |
-| 8 | Print resolved `.env` values | App SID, sink SID, subscription SID |
+| Credentials | valid, Standard key type | `GET /v1/Voice/Settings`; fail fast and readably |
+| ACI state | **reported only, never changed** | read-only |
+| TwiML App | exists, Request URL → `/voice-agent` | match friendly name `aci-poc-agent` |
+| Phone number | inbound Voice URL → `/voice-inbound` | match the configured number |
+| Event Streams sink | webhook sink → `/aci-sink` | match on `Description` |
+| Subscription | the five pinned types at pinned versions | reconcile via `SubscribedEvents`, don't recreate |
+| Sink health | test event received | `POST /Sinks/{Sid}/Test` |
 
-```
-✓ Credentials              account ACxxxx…  region us1
-· ACI state                advancedFeatures=false   (left as-is — the demo arms it)
-✓ TwiML App                APxxxx…  VoiceUrl → https://aci-poc.twilio.dtolb.com/voice-agent
-✓ Phone number             +1512xxxxxxx  VoiceUrl → …/voice-inbound
-✓ Event Streams sink       DGxxxx…  status active
-✓ Subscription             DFxxxx…
-    call-event.sdk         schema 3
-    call-event.gateway     schema 3
-    call-metrics.sdk       schema 2
-    call-metrics.gateway   schema 2
-    call-summary.complete  schema 8
-✓ Sink smoke test          POST /Sinks/DGxxxx…/Test → endpoint received in 240ms
-```
+**The ACI row is deliberately read-only.** The script must never enable Advanced Features, because "call 1 is un-instrumented" is the demo's opening move. If setup armed ACI, the first and most important lesson would be impossible to show.
 
-**Step 2 is deliberately read-only.** The script must never enable Advanced Features, because "call 1 is un-instrumented" is the demo's opening move. If the script armed ACI, the first and most important lesson would be impossible to show.
-
-### 10.2 What it deliberately cannot do
+### 10.3 What it deliberately cannot do
 
 | Not automated | Why |
 |---|---|
@@ -458,7 +499,7 @@ Two `calls` rows share a `conference_sid` after a codec switch (§8.4), which is
 
 Note also that **Standard** is the required key type: *"You can create Access Tokens using Main and Standard API Keys. Creating Access Tokens is not yet supported with Restricted API Keys."* A Restricted key will fail at token minting, which is a confusing failure mode worth asserting against at step 1.
 
-### 10.3 Pinned schema versions
+### 10.4 Pinned schema versions
 
 Versions are pinned to values verified against `/v1/Schemas/{Id}/Versions`. The Webhook Quickstart still documents `schema_version: 1` for call-summary — stale by seven versions, and a stale-but-valid version **silently delivers a degraded payload rather than erroring**, so this is asserted rather than defaulted.
 
@@ -466,7 +507,7 @@ Sink creation: `SinkType=webhook`, `SinkConfiguration={"destination":…,"method
 
 The Console also has a working UI for sinks and subscriptions that does support webhook sinks, so the script is a convenience rather than the only path — which is what makes the deferred walkthrough in §11 viable.
 
-### 10.1 Sink handler requirements
+### 10.5 Sink handler requirements
 
 Three non-obvious behaviours, each of which silently breaks the integration if missed:
 
