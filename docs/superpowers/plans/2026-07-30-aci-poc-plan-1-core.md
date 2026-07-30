@@ -812,6 +812,27 @@ test('reconnecting overrides everything', () => {
   assert.equal(verdictFor(4.5, [], true), 'reconnecting')
   assert.equal(verdictFor(1.0, ['low-bytes-sent'], true), 'reconnecting')
 })
+
+test('a null MOS still passes through the flooring step', () => {
+  // Regression: an early `return 'good'` on null MOS would let a live fault
+  // read as good, which is the worst failure mode for an agent-facing indicator.
+  assert.equal(verdictFor(null, ['high-jitter']), 'degraded')
+  assert.equal(verdictFor(null, []), 'good')
+})
+
+test('low-mos floors the verdict despite not sharing the high- prefix', () => {
+  assert.equal(verdictFor(4.5, ['low-mos']), 'degraded')
+})
+
+test('low-mos does not improve an already-worse verdict', () => {
+  assert.equal(verdictFor(2.0, ['low-mos']), 'bad')
+})
+
+test('constant-audio-input-level is deliberately not a flooring warning', () => {
+  // Suppressed while muted, and measures the local mic rather than the
+  // transmitted path — corroborating evidence, not a quality verdict.
+  assert.equal(verdictFor(4.5, ['constant-audio-input-level']), 'good')
+})
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -838,6 +859,28 @@ export const MOS_BANDS = {
   degraded: 3.1,
 } as const
 
+/**
+ * Warnings that floor the verdict at 'degraded'. This is an explicit named
+ * set rather than a 'high-' prefix test, so a future WarningName can't
+ * silently opt out of the floor just by not sharing that prefix.
+ *
+ * 'low-mos' is included: it's a threshold breach on a metric where *lower*
+ * is worse, semantically identical to the high-* warnings — it just doesn't
+ * share their prefix.
+ *
+ * 'constant-audio-input-level' is deliberately excluded: it's suppressed
+ * while the agent is muted and measures the local microphone rather than
+ * the transmitted path, so it's corroborating evidence, not on its own a
+ * verdict on call quality.
+ */
+const FLOORING_WARNINGS: ReadonlySet<WarningName> = new Set<WarningName>([
+  'high-rtt',
+  'high-jitter',
+  'low-mos',
+  'high-packet-loss',
+  'high-packets-lost-fraction',
+])
+
 export type VerdictInput = {
   window: SampleWindow
   activeWarnings: Set<WarningName>
@@ -854,19 +897,21 @@ export function computeVerdict(input: VerdictInput): Verdict {
   }
 
   const mos = input.window.p50Mos()
-  // No usable MOS yet (first sample, or pre-ICE). Absence of data is not a fault.
-  if (mos === null) return 'good'
 
+  // No usable MOS yet (first sample, or pre-ICE). Absence of data is not a
+  // fault, so the banded result is 'good' — but it still must pass through
+  // the flooring step below rather than returning early.
   const banded: Verdict =
-    mos >= MOS_BANDS.good ? 'good'
+    mos === null ? 'good'
+    : mos >= MOS_BANDS.good ? 'good'
     : mos >= MOS_BANDS.fair ? 'fair'
     : mos >= MOS_BANDS.degraded ? 'degraded'
     : 'bad'
 
-  // An active threshold warning floors the verdict at degraded, but never
+  // An active quality warning floors the verdict at degraded, but never
   // improves a worse one.
-  const hasHighWarning = [...input.activeWarnings].some((w) => w.startsWith('high-'))
-  if (hasHighWarning && (banded === 'good' || banded === 'fair')) return 'degraded'
+  const hasFlooringWarning = [...input.activeWarnings].some((w) => FLOORING_WARNINGS.has(w))
+  if (hasFlooringWarning && (banded === 'good' || banded === 'fair')) return 'degraded'
 
   return banded
 }
@@ -875,7 +920,7 @@ export function computeVerdict(input: VerdictInput): Verdict {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd ~/code/aci-quality-poc && pnpm test && pnpm typecheck`
-Expected: 9 verdict tests pass; typecheck exits 0.
+Expected: 14 verdict tests pass (9 band/precedence + 5 flooring regressions); typecheck exits 0.
 
 - [ ] **Step 5: Commit**
 
@@ -1586,7 +1631,7 @@ export class Store {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd ~/code/aci-quality-poc && pnpm test && pnpm typecheck`
-Expected: 11 store tests pass; full suite green (**46 tests** — 3 types, 3 architecture, 8 window, 9 verdict, 12 beacon, 11 store); typecheck exits 0.
+Expected: 11 store tests pass; full suite green (**51 tests** — 3 types, 3 architecture, 8 window, 14 verdict, 12 beacon, 11 store); typecheck exits 0.
 
 - [ ] **Step 5: Commit**
 
@@ -1628,7 +1673,7 @@ Expected: `clean`, then a successful commit.
 
 ## Definition of done
 
-- [ ] `pnpm test` — 46 tests pass, 0 fail
+- [ ] `pnpm test` — 51 tests pass, 0 fail
 - [ ] `pnpm typecheck` — exits 0
 - [ ] `tests/architecture.test.ts` demonstrably fails when a forbidden import is introduced (proven in Task 3, Step 2)
 - [ ] No runtime dependencies in `package.json`; `typescript` and `@types/node` are the only devDependencies
