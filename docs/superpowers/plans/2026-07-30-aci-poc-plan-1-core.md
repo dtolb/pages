@@ -70,10 +70,13 @@ git init
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "typescript": "^5.8.0"
   }
 }
 ```
+
+`@types/node` is required because `tsconfig.json` sets `"types": ["node"]`, and the code uses `node:sqlite`, `node:test`, `node:fs`, and `node:path`. Pin the major to **24** to match the Node 24 runtime — a newer major would type APIs this runtime does not have. These two are the only devDependencies; there are no runtime dependencies.
 
 - [ ] **Step 3: Write `tsconfig.json`**
 
@@ -137,21 +140,35 @@ Not production. See the design spec in `~/code/pages/docs/superpowers/specs/`.
     pnpm typecheck   # tsc --noEmit
 ```
 
-- [ ] **Step 6: Install and verify both scripts run**
+- [ ] **Step 6: Install and verify the scripts are wired**
 
 ```bash
 cd ~/code/aci-quality-poc
 pnpm install
-pnpm typecheck
 ```
 
-Expected: `pnpm install` completes; `pnpm typecheck` exits 0 with no output (no files to check yet).
+Expected: completes, installing only `typescript` and `@types/node`.
 
 ```bash
 pnpm test
 ```
 
 Expected: exits 0, reporting `tests 0` / `pass 0` / `fail 0`.
+
+```bash
+pnpm typecheck
+```
+
+**Expected: this FAILS at this point, with exactly:**
+
+```
+error TS18003: No inputs were found in config file 'tsconfig.json'.
+Specified 'include' paths were '["shared","server","web","tests"]' and 'exclude' paths were '[]'.
+```
+
+That is correct and expected — the `include` directories do not exist until Task 2 creates `shared/types.ts`. **Do NOT "fix" this** by creating a placeholder file, adding `"files": []`, or narrowing `include`; Task 2 resolves it by adding the first real source file. Confirm you got TS18003 and move on.
+
+From Task 2 onward, `pnpm typecheck` must exit 0.
 
 - [ ] **Step 7: Commit**
 
