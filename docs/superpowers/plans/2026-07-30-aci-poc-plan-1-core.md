@@ -1435,6 +1435,36 @@ test('feedback with no comment stores empty strings, not null', () => {
   assert.equal(row!.score, null)
   s.close()
 })
+
+test('a redelivered upsert cannot resurrect a completed call', () => {
+  // Guards the deliberate omission of started_at/ended_at/verdict_worst from
+  // the ON CONFLICT SET clause. Adding them back makes this test fail — which
+  // was confirmed by simulating exactly that refactor.
+  const s = new Store()
+  s.upsertCall(call({ codec: 'PCMU', instrumented: false, startedAt: 1000 }))
+  s.endCall('CA1', 9000, 'bad')
+  s.upsertCall(call({ codec: 'opus', instrumented: true, startedAt: 1000 }))
+
+  const [row] = s.callsInConference('CF1')
+  assert.equal(row!.endedAt, 9000, 'endedAt must not be clobbered')
+  assert.equal(row!.verdictWorst, 'bad', 'verdictWorst must not be clobbered')
+  assert.equal(row!.startedAt, 1000, 'startedAt must not be clobbered')
+  assert.equal(row!.codec, 'opus', 'codec should be updated')
+  assert.equal(row!.instrumented, true, 'instrumented should be updated')
+  s.close()
+})
+
+test('upsertCall updates conference_sid, leg, and instrumented on conflict', () => {
+  const s = new Store()
+  s.upsertCall(call({ conferenceSid: 'CF1', leg: 'cca', instrumented: false }))
+  s.upsertCall(call({ conferenceSid: 'CF2', leg: 'caller', instrumented: true }))
+
+  const [row] = s.callsInConference('CF2')
+  assert.equal(row!.conferenceSid, 'CF2', 'conferenceSid should be updated')
+  assert.equal(row!.leg, 'caller', 'leg should be updated')
+  assert.equal(row!.instrumented, true, 'instrumented should be updated')
+  s.close()
+})
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1545,7 +1575,9 @@ export class Store {
            conference_sid = excluded.conference_sid,
            leg            = excluded.leg,
            codec          = excluded.codec,
-           instrumented   = excluded.instrumented`,
+           instrumented   = excluded.instrumented
+         -- Do NOT update started_at, ended_at, or verdict_worst: a redelivered
+         -- upsert must not resurrect or clobber a completed call.`,
       )
       .run(
         row.callSid,
@@ -1666,7 +1698,7 @@ export class Store {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd ~/code/aci-quality-poc && pnpm test && pnpm typecheck`
-Expected: 11 store tests pass; full suite green (**53 tests** — 3 types, 3 architecture, 8 window, 14 verdict, 14 beacon, 11 store); typecheck exits 0.
+Expected: 13 store tests pass; full suite green (**55 tests** — 3 types, 3 architecture, 8 window, 14 verdict, 14 beacon, 13 store); typecheck exits 0.
 
 - [ ] **Step 5: Commit**
 
@@ -1708,7 +1740,7 @@ Expected: `clean`, then a successful commit.
 
 ## Definition of done
 
-- [ ] `pnpm test` — 53 tests pass, 0 fail
+- [ ] `pnpm test` — 55 tests pass, 0 fail
 - [ ] `pnpm typecheck` — exits 0
 - [ ] `tests/architecture.test.ts` demonstrably fails when a forbidden import is introduced (proven in Task 3, Step 2)
 - [ ] No runtime dependencies in `package.json`; `typescript` and `@types/node` are the only devDependencies
