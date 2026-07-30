@@ -208,6 +208,8 @@ Server owns the config so it persists and records what tripped; the client evalu
 
 Combinator: `ANY` (default) / `ALL` / `N-of-M`, where the user sets **N** and **M is the count of enabled rows**. Defaults are deliberately loose per the gratuitous-triggering decision.
 
+**Sustain is tracked independently of the sample window.** The default MOS sustain of 15 s exceeds the 10 × 1 s window, so `BeaconEvaluator` keeps its own per-metric "condition true since" timestamps rather than scanning the window. The window remains 10 samples for `p50Mos` and the verdict; widening it to accommodate sustain would change the verdict's smoothing characteristics for no benefit.
+
 Verdict states are inherited from the parent spec §4.4 — `good` / `fair` / `degraded` / `bad` / `reconnecting` — with the same contiguous MOS bands, so the POC and the strategy document cannot drift apart.
 
 **Always on, not configurable** because they are categorical rather than threshold-based: `low-bytes-sent`, `low-bytes-received`, `ice-connectivity-lost`, `reconnecting` (branch on **53405** media vs **53001** signaling).
