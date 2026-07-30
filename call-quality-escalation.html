@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call-Quality Detection &amp; ACI Escalation — Reference</title>
+<style>
+  :root{
+    --field:#ECF1F3;
+    --paper:#FFFFFF;
+    --ink:#14283A;
+    --muted:#5A6B7A;
+    --line:#C6D2D9;
+
+    --sdk:#2E6FA3;
+    --backend:#4D5777;
+    --twilio:#EF223A;
+    --paid:#5B4BD1;
+    --carrier:#C77B31;
+
+    --ok:#2E7D5B;
+    --warn:#C08A3E;
+    --no:#C05A5A;
+
+    --display:"Avenir Next","Futura","Century Gothic","Trebuchet MS",sans-serif;
+    --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--field);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:16px;line-height:1.55;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 79px, rgba(46,111,163,.06) 79px 80px),
+      repeating-linear-gradient(90deg, transparent 0 79px, rgba(46,111,163,.06) 79px 80px);
+    padding-bottom:72px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+
+  /* hero */
+  header{padding:56px 0 8px}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    color:var(--twilio);text-transform:uppercase;
+  }
+  h1{
+    font-family:var(--display);font-weight:600;
+    font-size:clamp(34px,5.2vw,54px);letter-spacing:-.02em;line-height:1.06;
+    margin:10px 0 14px;
+  }
+  .thesis{max-width:660px;color:var(--muted);font-size:17.5px}
+  .thesis strong{color:var(--ink);font-weight:600}
+
+  .tracks{display:flex;flex-wrap:wrap;gap:10px 22px;margin:26px 0 8px}
+  .track{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;letter-spacing:.04em}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.sdk{background:var(--sdk)}
+  .dot.backend{background:var(--backend)}
+  .dot.twilio{background:var(--twilio)}
+  .dot.paid{background:var(--paid)}
+  .dot.carrier{background:var(--carrier)}
+
+  /* overview swimlane */
+  .swim{margin:30px 0 0;background:var(--paper);border:1px solid var(--line)}
+  .swimgrid{display:grid;grid-template-columns:92px repeat(5,1fr)}
+  .swimgrid > div{
+    padding:10px 11px;border-bottom:1px solid #EDF1F3;border-right:1px solid #EDF1F3;
+    display:flex;align-items:center;
+  }
+  .swimgrid > div:nth-child(6n){border-right:none}
+  .swimgrid > div:nth-child(n+25){border-bottom:none}
+  .swimgrid > div:nth-child(-n+6){
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--muted);background:#FBFCFD;justify-content:center;text-align:center;padding:9px 6px;
+  }
+  .lane{
+    font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink);gap:6px;background:#FBFCFD;
+  }
+  .lane .dot{width:8px;height:8px}
+  .sc{font-size:11.5px;line-height:1.42;color:var(--muted);border-left:2px solid var(--lc);padding-left:8px}
+  .sc b{color:var(--ink);font-weight:600;display:block}
+  .sc code{font-family:var(--mono);font-size:10.5px;color:var(--ink)}
+  .sc.client{--lc:var(--sdk)}
+  .sc.server{--lc:var(--backend)}
+  .sc.tw{--lc:var(--twilio)}
+  .sc.pstn{--lc:var(--carrier)}
+  .sc.paidc{--lc:var(--paid)}
+  .swimgrid .empty{position:relative}
+  .swimgrid .empty::after{
+    content:"";position:absolute;left:12px;right:12px;top:50%;height:1px;background:#E9EEF1;
+  }
+  .swimcap{
+    font-size:13px;color:var(--muted);margin-top:11px;max-width:730px;line-height:1.5;
+  }
+  .swimcap strong{color:var(--ink);font-weight:600}
+
+  /* constraints */
+  .constraint{
+    background:#FBFCFD;border:1px solid var(--line);border-left:3px solid var(--twilio);
+    padding:6px 0;margin:34px 0 0;
+  }
+  .constraint dl{display:grid;grid-template-columns:186px 1fr}
+  .constraint dt{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--twilio);padding:13px 0 13px 20px;border-top:1px solid #EDF1F3;
+  }
+  .constraint dd{
+    font-size:14.5px;color:var(--muted);line-height:1.55;padding:13px 20px 13px 0;
+    border-top:1px solid #EDF1F3;
+  }
+  .constraint dl > dt:first-of-type,.constraint dl > dt:first-of-type + dd{border-top:none}
+  .constraint dd strong{color:var(--ink);font-weight:600}
+  .constraint code{
+    font-family:var(--mono);font-size:12.5px;background:var(--field);
+    padding:1px 5px;border:1px solid var(--line);color:var(--ink);
+  }
+
+  /* section chrome */
+  section.blk{margin:52px 0 0;border-top:1px solid var(--line);padding-top:30px}
+  section.blk > h2{
+    font-family:var(--display);font-size:22px;font-weight:600;margin-bottom:5px;letter-spacing:-.01em;
+  }
+  section.blk > .sub{color:var(--muted);font-size:14.5px;margin-bottom:22px;max-width:720px}
+  section.blk > .sub strong{color:var(--ink);font-weight:600}
+  section.blk > .sub code{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .snum{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);display:block;margin-bottom:7px;
+  }
+  h3.sh{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink);margin:30px 0 12px;display:flex;align-items:center;gap:9px;
+  }
+  h3.sh .badge{
+    font-size:9.5px;letter-spacing:.1em;padding:2px 7px;border-radius:2px;
+    border:1px solid currentColor;font-weight:400;
+  }
+  h3.sh.basic{color:var(--ok)}
+  h3.sh.adv{color:var(--paid)}
+
+  /* flow */
+  .tierlabel{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
+    margin:0 0 14px;display:flex;align-items:center;gap:11px;justify-content:center;
+  }
+  .tierlabel b{font-weight:600}
+  .tierlabel .cost{font-size:10px;letter-spacing:.1em;padding:2px 8px;border-radius:2px;border:1px solid currentColor}
+  .t0{color:var(--ok)} .t1{color:var(--paid)} .t2{color:var(--backend)}
+
+  .band{display:flex;justify-content:center;align-items:stretch;flex-wrap:nowrap}
+  .node{
+    position:relative;background:var(--paper);border:1px solid var(--line);
+    padding:16px 16px 15px;flex:1 1 0;min-width:172px;max-width:252px;
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--line))}
+  .node.sdk{--accent:var(--sdk)}
+  .node.backend{--accent:var(--backend)}
+  .node.twilio{--accent:var(--twilio)}
+  .node.paid{--accent:var(--paid)}
+  .node.carrier{--accent:var(--carrier)}
+  .node .num{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.14em}
+  .node h4{font-family:var(--display);font-size:16.5px;font-weight:600;letter-spacing:-.01em}
+  .node p{font-size:13px;color:var(--muted);line-height:1.5}
+  .node p code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:6px}
+  .tag{
+    --c:var(--muted);
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+    padding:2px 7px;border-radius:2px;border:1px solid var(--c);color:var(--c);line-height:1.5;
+    white-space:nowrap;
+  }
+  .tag.sdk{--c:var(--sdk)} .tag.backend{--c:var(--backend)}
+  .tag.twilio{--c:var(--twilio)} .tag.paid{--c:var(--paid)}
+  .tag.carrier{--c:var(--carrier)} .tag.ok{--c:var(--ok)} .tag.no{--c:var(--no)}
+
+  .h-arrow{flex:0 0 38px;align-self:center;height:2px;background:var(--line);position:relative;margin:0 3px}
+  .h-arrow::after{
+    content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);
+    width:0;height:0;border-left:8px solid var(--line);
+    border-top:5px solid transparent;border-bottom:5px solid transparent;
+  }
+  .v-arrow{width:2px;height:30px;background:var(--line);position:relative;margin:12px auto}
+  .v-arrow::after{
+    content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+    width:0;height:0;border-top:8px solid var(--line);
+    border-left:5px solid transparent;border-right:5px solid transparent;
+  }
+  .v-arrow.paid{background:var(--paid)} .v-arrow.paid::after{border-top-color:var(--paid)}
+  .v-arrow .lbl{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);white-space:nowrap;
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  }
+  .v-arrow.paid .lbl{color:var(--paid)}
+
+  /* split panels */
+  .split{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);background:var(--paper)}
+  .split > div{padding:20px 22px}
+  .split > div:first-child{border-right:1px solid var(--line)}
+  .split h4{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    margin-bottom:4px;display:flex;align-items:center;gap:8px;
+  }
+  .split .free h4{color:var(--ok)}
+  .split .gated h4{color:var(--paid)}
+  .split .price{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:14px}
+  .split ul{list-style:none}
+  .split li{font-size:13.5px;color:var(--muted);padding:6px 0 6px 15px;position:relative;line-height:1.5}
+  .split li::before{content:"";position:absolute;left:0;top:13px;width:5px;height:1px;background:var(--line)}
+  .split li b{color:var(--ink);font-weight:600}
+  .split li code{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+  .split li+li{border-top:1px solid #F0F4F6}
+
+  /* tables */
+  .tbl{width:100%;border-collapse:collapse;background:var(--paper);border:1px solid var(--line);font-size:13.5px}
+  .tbl th{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);color:var(--ink);
+    font-weight:600;background:#FBFCFD;vertical-align:bottom;
+  }
+  .tbl td{padding:11px 14px;border-bottom:1px solid #EEF2F4;color:var(--muted);vertical-align:top;line-height:1.5}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl td strong{color:var(--ink);font-weight:600}
+  .tbl code{font-family:var(--mono);font-size:12px;color:var(--ink);white-space:nowrap}
+  .tbl td.act{white-space:nowrap;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td.act.go{color:var(--paid)} .tbl td.act.stop{color:var(--ok)}
+  .tbl + .tnote{font-size:13px;color:var(--muted);margin-top:11px;max-width:730px}
+  .tbl + .tnote strong{color:var(--ink);font-weight:600}
+  .tbl + .tnote code{font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+  /* indicator bars */
+  .bars{display:inline-flex;gap:2px;align-items:flex-end;height:15px;vertical-align:middle}
+  .bars i{width:4px;background:#DCE4E9;border-radius:1px;display:block}
+  .bars i:nth-child(1){height:5px}
+  .bars i:nth-child(2){height:8px}
+  .bars i:nth-child(3){height:11.5px}
+  .bars i:nth-child(4){height:15px}
+  .bars i.f{background:var(--c)}
+  .recon{font-family:var(--mono);font-size:14px;color:var(--warn)}
+  .stname{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+
+  /* lists */
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:22px 40px}
+  .checkcol h4{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px;
+  }
+  .checkcol ol{list-style:none;counter-reset:c}
+  .checkcol ol li{
+    counter-increment:c;position:relative;padding:8px 0 8px 30px;font-size:13.5px;
+    color:var(--muted);line-height:1.5;border-bottom:1px solid #E7EDF0;
+  }
+  .checkcol ol li::before{
+    content:counter(c,decimal-leading-zero);position:absolute;left:0;top:9px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--paid);
+  }
+  .checkcol ul{list-style:none}
+  .checkcol ul li{
+    padding:7px 0 7px 18px;position:relative;font-size:13.5px;color:var(--muted);
+    line-height:1.5;border-bottom:1px solid #E7EDF0;
+  }
+  .checkcol ul li::before{content:"\25A1";position:absolute;left:0;top:7px;color:var(--line);font-size:12px}
+  .checkcol li:last-child{border-bottom:none}
+  .checkcol li strong{color:var(--ink);font-weight:600}
+  .checkcol li code{font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+  /* caveats */
+  .caveats{list-style:none;background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--warn)}
+  .caveats li{padding:12px 20px;font-size:13.5px;color:var(--muted);line-height:1.5;border-bottom:1px solid #EEF2F4}
+  .caveats li:last-child{border-bottom:none}
+  .caveats li strong{color:var(--ink);font-weight:600}
+  .caveats li code{font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+  /* later considerations */
+  .later{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .later li{
+    padding:16px 20px;background:var(--paper);
+    border:1px solid var(--line);border-left:3px solid var(--backend);
+  }
+  .later .lt{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--backend);margin-bottom:7px;
+  }
+  .later p{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .later p strong{color:var(--ink);font-weight:600}
+  .later p code{font-family:var(--mono);font-size:12px;color:var(--ink)}
+
+  /* code */
+  pre{
+    background:var(--ink);color:#DCE6EE;font-family:var(--mono);font-size:12.5px;line-height:1.65;
+    padding:18px 20px;overflow-x:auto;border-left:3px solid var(--paid);margin:0;
+  }
+  pre .cm{color:#7C93A6}
+  pre .fl{color:#F5A0AD}
+  pre .st{color:#9BD4A8}
+
+  /* docs */
+  .docs{margin:52px 0 0;border-top:1px solid var(--line);padding-top:30px}
+  .docs > h3{font-family:var(--display);font-size:20px;font-weight:600;margin-bottom:4px}
+  .docs > .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
+  .docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 44px}
+  .docs h4{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;
+  }
+  .docs ul{list-style:none}
+  .docs li{margin-bottom:12px;line-height:1.4}
+  .docs a{
+    color:var(--ink);text-decoration:none;font-size:14.5px;
+    border-bottom:1px solid var(--line);padding-bottom:1px;transition:color .15s,border-color .15s;
+  }
+  .col-paid a:hover{color:var(--paid);border-color:var(--paid)}
+  .col-twilio a:hover{color:var(--twilio);border-color:var(--twilio)}
+  .col-sdk a:hover{color:var(--sdk);border-color:var(--sdk)}
+  .docs .desc{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;border:none}
+
+  .foot{
+    margin-top:44px;padding-top:20px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);line-height:1.7;
+  }
+
+  @media (max-width:860px){
+    .later{grid-template-columns:1fr}
+    .swim{overflow-x:auto}
+    .swimgrid{min-width:780px}
+  }
+  @media (max-width:760px){
+    .band{flex-direction:column;align-items:center}
+    .node{max-width:400px;width:100%}
+    .h-arrow{transform:rotate(90deg);margin:12px 0}
+    .split{grid-template-columns:1fr}
+    .split > div:first-child{border-right:none;border-bottom:1px solid var(--line)}
+    .checks,.docs-grid{grid-template-columns:1fr;gap:24px}
+    .constraint dl{grid-template-columns:1fr}
+    .constraint dt{padding:13px 20px 0}
+    .constraint dd{padding:4px 20px 13px;border-top:none}
+    .constraint dl > dt:first-of-type + dd{border-top:none}
+    .tbl{font-size:12.5px}
+    .tbl th,.tbl td{padding:9px 10px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Voice &middot; Conference &middot; Quality Reference</div>
+    <h1>Client events to<br>ACI escalation</h1>
+    <p class="thesis"> Detecting degraded call quality from free Voice JS SDK events, and using those events to decide when to enable Voice Insights Advanced Features for a tenant subaccount. Agent on the browser SDK, caller on the PSTN, both in a Conference.
+    </p>
+
+    <div class="tracks">
+      <div class="track"><span class="dot sdk"></span>Agent browser &mdash; Voice JS SDK</div>
+      <div class="track"><span class="dot backend"></span>Your server</div>
+      <div class="track"><span class="dot twilio"></span>Twilio free surfaces</div>
+      <div class="track"><span class="dot paid"></span>Advanced Call Insights</div>
+      <div class="track"><span class="dot carrier"></span>PSTN / carrier edge</div>
+    </div>
+
+    <div class="swim">
+      <div class="swimgrid">
+        <div></div>
+        <div>At login</div>
+        <div>During call</div>
+        <div>On trip</div>
+        <div>Instrumented</div>
+        <div>Close</div>
+
+        <div class="lane"><span class="dot sdk"></span>Client</div>
+        <div><div class="sc client"><b>runPreflight()</b>Gate on <code>isTurnRequired</code></div></div>
+        <div><div class="sc client"><b><code>sample</code> 1 Hz</b>+ <code>warning</code> &rarr; indicator</div></div>
+        <div><div class="sc client"><b>Beacon</b>On state change only</div></div>
+        <div class="empty"></div>
+        <div class="empty"></div>
+
+        <div class="lane"><span class="dot backend"></span>Server</div>
+        <div class="empty"></div>
+        <div><div class="sc server"><b>Ingest</b>Rollups per call</div></div>
+        <div><div class="sc server"><b>POST Settings</b><code>AdvancedFeatures=true</code></div></div>
+        <div><div class="sc server"><b>Pull</b><code>/Metrics</code> <code>/Events</code></div></div>
+        <div><div class="sc server"><b>Export, then off</b>Both flags false</div></div>
+
+        <div class="lane"><span class="dot twilio"></span>Twilio</div>
+        <div class="empty"></div>
+        <div><div class="sc tw"><b>Conference</b>Metrics computed in-flight, then discarded</div></div>
+        <div class="empty"></div>
+        <div><div class="sc paidc"><b>Writes to disk</b><code>sdk_edge</code> + <code>carrier_edge</code></div></div>
+        <div><div class="sc tw"><b>Retains 30 d</b>Voice Trace 10 d</div></div>
+
+        <div class="lane"><span class="dot carrier"></span>PSTN</div>
+        <div class="empty"></div>
+        <div><div class="sc pstn"><b>Caller leg</b>No client telemetry</div></div>
+        <div class="empty"></div>
+        <div><div class="sc pstn"><b><code>carrier_edge</code></b>The reason to escalate</div></div>
+        <div class="empty"></div>
+      </div>
+    </div>
+    <p class="swimcap"> The client detects, the server decides, and Twilio persists only while the flag is on. <strong>Twilio's row is empty under &ldquo;on trip&rdquo;</strong> because enabling ACI has no effect on the call that triggered it.
+    </p>
+
+    <div class="constraint">
+      <dl>
+        <dt>ACI is forward-only</dt>
+        <dd>Eligibility is fixed when a call is created, with no backfill. Enabling ACI during a call returns no data for that call, including its remaining minutes. Querying an ineligible call returns <code>HTTP 401</code> / error <code>17007</code>. <strong>The call that triggers escalation is never instrumented.</strong></dd>
+
+        <dt>Account-scoped toggle</dt>
+        <dd>No per-call, per-number, or per-TwiML-app scoping exists. The per-tenant subaccount is the only isolation boundary available.</dd>
+
+        <dt>Voice Trace is not readable</dt>
+        <dd>It saves RTP for Twilio Support. No API, no Console download, 10-day retention, and captures cannot be shared outside Twilio. Its use here is evidence for a carrier ticket.</dd>
+
+        <dt>What the flag controls</dt>
+        <dd>Twilio computes the metric stream in-flight on every call and discards it when the flag is off. The SDK already posts samples to <code>eventgw.twilio.com</code> in 10&nbsp;s batches at no charge. Reading the same data in the browser gives 1&nbsp;Hz resolution and does not depend on the flag.</dd>
+      </dl>
+    </div>
+  </header>
+
+  <!-- 01 FLOW -->
+  <section class="blk" aria-label="Escalation flow"> <span class="snum">01</span>
+    <h2>Sequence</h2>
+    <p class="sub"> Preflight at login and client-side detection during calls both run at no cost. ACI is enabled per subaccount on a trip, used to attribute the fault to an edge, then disabled.
+    </p>
+
+    <div class="tierlabel t0"><b>At login</b><span class="cost">$0</span></div>
+
+    <div class="band" style="max-width:252px;margin:0 auto">
+      <div class="node sdk">
+        <div class="num">GATE</div>
+        <h4>Preflight</h4>
+        <p><code>runPreflight()</code> before calls are routed. <code>isTurnRequired</code> reports whether UDP is blocked &mdash; unavailable in-call.</p>
+        <div class="tags"><span class="tag sdk">no ACI</span></div>
+      </div>
+    </div>
+
+    <div class="v-arrow"><span class="lbl">Agent accepted</span></div>
+
+    <div class="tierlabel t0"><b>Detect</b><span class="cost">$0</span></div>
+
+    <div class="band">
+      <div class="node sdk">
+        <div class="num">SENSOR</div>
+        <h4>Sentinel</h4>
+        <p>Sidecar per <code>Call</code>. Rolling 10&times;1&nbsp;s window over <code>sample</code>, <code>warning</code>, <code>reconnecting</code>.</p>
+        <div class="tags"><span class="tag sdk">1 Hz</span><span class="tag sdk">no ACI</span></div>
+      </div>
+      <div class="h-arrow"></div>
+      <div class="node sdk">
+        <div class="num">DISPLAY</div>
+        <h4>Agent indicator</h4>
+        <p>Five states from p50 MOS and hard faults. Local to the browser.</p>
+        <div class="tags"><span class="tag sdk">local</span></div>
+      </div>
+      <div class="h-arrow"></div>
+      <div class="node backend">
+        <div class="num">REPORT</div>
+        <h4>Beacon</h4>
+        <p>On state change only. Roughly 0&ndash;5 per call, plus one rollup via <code>sendBeacon()</code>.</p>
+        <div class="tags"><span class="tag backend">your store</span></div>
+      </div>
+    </div>
+
+    <div class="v-arrow paid"><span class="lbl">Trip</span></div>
+
+    <div class="tierlabel t1"><b>Instrument</b><span class="cost">$0.0024 / min</span></div>
+
+    <div class="band">
+      <div class="node paid">
+        <div class="num">ENABLE</div>
+        <h4>Per subaccount</h4>
+        <p><code>POST /v1/Voice/Settings</code> with <code>SubaccountSid</code>. GET first; POST is a partial update.</p>
+        <div class="tags"><span class="tag paid">forward only</span></div>
+      </div>
+      <div class="h-arrow"></div>
+      <div class="node carrier">
+        <div class="num">OBSERVE</div>
+        <h4>Calls N+1&hellip;</h4>
+        <p>Client leg carries <code>sdk_edge</code>; PSTN leg carries <code>carrier_edge</code> only.</p>
+        <div class="tags"><span class="tag carrier">separate SIDs</span></div>
+      </div>
+      <div class="h-arrow"></div>
+      <div class="node paid">
+        <div class="num">ATTRIBUTE</div>
+        <h4>Locate the fault</h4>
+        <p>Correlate legs by <code>ConferenceSid</code>. Agent last mile, carrier, region, or codec.</p>
+        <div class="tags"><span class="tag paid">tags</span></div>
+      </div>
+    </div>
+
+    <div class="v-arrow paid"><span class="lbl">Cause found</span></div>
+
+    <div class="tierlabel t2"><b>Disable</b></div>
+
+    <div class="band">
+      <div class="node backend">
+        <div class="num">01</div>
+        <h4>Export</h4>
+        <p>Metrics, events and summaries to local storage. Availability after clearing the flag is undocumented.</p>
+        <div class="tags"><span class="tag no">required</span></div>
+      </div>
+      <div class="h-arrow"></div>
+      <div class="node backend">
+        <div class="num">02</div>
+        <h4>Wait</h4>
+        <p>Metrics ~90&nbsp;s. Partial summary ~10&nbsp;min. Complete summary up to 30&nbsp;min.</p>
+        <div class="tags"><span class="tag backend">ingestion</span></div>
+      </div>
+      <div class="h-arrow"></div>
+      <div class="node twilio">
+        <div class="num">03</div>
+        <h4>Both flags false</h4>
+        <p>Explicitly. Voice Trace is disabled separately, once Support has the Call SIDs.</p>
+        <div class="tags"><span class="tag ok">$0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 SIGNALS -->
+  <section class="blk" aria-label="Signal inventory"> <span class="snum">02</span>
+    <h2>Signal inventory</h2>
+    <p class="sub"> Client events are computed locally from <code>RTCPeerConnection.getStats()</code>. Verified against SDK source: no entitlement check exists in the emit path.
+    </p>
+
+    <div class="split">
+      <div class="free">
+        <h4><span class="dot" style="background:var(--ok)"></span>Without ACI</h4>
+        <div class="price">no entitlement</div>
+        <ul>
+          <li><b><code>sample</code>, 1&nbsp;Hz</b> &mdash; <code>mos</code>, <code>rtt</code>, <code>jitter</code>, <code>packetsLostFraction</code>, byte and packet counts, audio levels, <code>codecName</code></li>
+          <li><b>9 warning names</b> with raise and clear &mdash; <code>high-rtt</code>, <code>low-mos</code>, <code>high-packet-loss</code>, <code>low-bytes-*</code>, <code>ice-connectivity-lost</code></li>
+          <li><b><code>reconnecting</code></b> &mdash; <code>53405</code> media, <code>53001</code> signaling</li>
+          <li><b><code>postFeedback()</code></b> &mdash; agent-reported <code>one-way-audio</code>, <code>choppy-audio</code>, <code>echo</code></li>
+          <li><b>Status callbacks</b> &mdash; <code>CallStatus</code>, <code>SipResponseCode</code>, <code>ReasonParticipantLeft</code></li>
+          <li><b>Error <code>32014</code></b> &mdash; call terminated, no audio received. The only free server-side audio signal</li>
+        </ul>
+      </div>
+      <div class="gated">
+        <h4><span class="dot paid"></span>Requires ACI</h4>
+        <div class="price">$0.0024 / min &middot; account-scoped &middot; forward-only</div>
+        <ul>
+          <li><b><code>carrier_edge</code> for the PSTN leg</b> &mdash; not obtainable from the browser</li>
+          <li><b>Conference mixer diagnostics</b> &mdash; <code>detected_issues</code>, <code>mixer_region</code> vs <code>mixer_region_requested</code></li>
+          <li><b>Per-interval timeseries</b> &mdash; <code>/Metrics</code>, including <code>packet_delay_variation</code> buckets</li>
+          <li><b>Quality tags</b> &mdash; <code>low_mos</code>, <code>ice_failure</code>, <code>high_pdd</code>, <code>silence</code>, <code>pstn_short_duration</code></li>
+          <li><b>Participant summaries</b> &mdash; <code>jitter_buffer_size</code>, <code>quality_issues</code></li>
+          <li><b>All Insights REST and Event Streams</b> &mdash; no basic tier over API; the free summary is Console-only</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 CLIENT DETECTION -->
+  <section class="blk" aria-label="Client detection"> <span class="snum">03</span>
+    <h2>Client-side detection</h2>
+    <p class="sub"> Derive state from <code>sample</code>. Warning state is unsuitable as the direct driver: warnings are suppressed for the first 5000&nbsp;ms of a call, and clearing requires 0-of-10 clean samples plus a 5&nbsp;s hold, so recovery lags by at least 10&nbsp;s. Warnings are still recorded, since they match the <code>sdk_edge</code> events ACI returns.
+    </p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th style="width:74px">Signal</th><th style="width:124px">State</th><th>Condition</th><th style="width:236px">Agent message</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="bars" style="--c:#2E7D5B"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td>
+          <td><span class="stname">Good</span></td><td>p50 MOS &ge; 4.0 over last 10&nbsp;s</td><td>none</td>
+        </tr>
+        <tr>
+          <td><span class="bars" style="--c:#2E7D5B"><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td>
+          <td><span class="stname">Fair</span></td><td>p50 MOS 3.6 &ndash; 4.0</td><td>none</td>
+        </tr>
+        <tr>
+          <td><span class="bars" style="--c:#C08A3E"><i class="f"></i><i class="f"></i><i></i><i></i></span></td>
+          <td><span class="stname">Degraded</span></td><td>p50 MOS 3.1 &ndash; 3.6, or an active <code>high-*</code> warning</td><td>&ldquo;Connection is struggling&rdquo;</td>
+        </tr>
+        <tr>
+          <td><span class="bars" style="--c:#C05A5A"><i class="f"></i><i></i><i></i><i></i></span></td>
+          <td><span class="stname">Bad</span></td><td>p50 MOS &lt; 3.1, or <code>low-bytes-*</code>, or far-end silence</td><td>State the direction</td>
+        </tr>
+        <tr>
+          <td><span class="recon">&#10227;</span></td>
+          <td><span class="stname">Reconnecting</span></td><td><code>reconnecting</code> &mdash; branch on <code>53405</code> vs <code>53001</code></td><td>&ldquo;Reconnecting&rdquo;</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="tnote"> <code>ice-connectivity-lost</code>, <code>low-bytes-*</code> and <code>reconnecting</code> set the worst state immediately rather than waiting for MOS to decay. Do not reuse <code>PreflightTest.CallQuality</code> bands: they are non-contiguous in source, so MOS 4.05 matches no branch and reports <code>degraded</code>.
+    </p>
+
+    <h3 class="sh"><span class="dot sdk"></span>One-way audio</h3>
+    <table class="tbl">
+      <thead>
+        <tr><th style="width:236px">Signal</th><th>Meaning</th><th style="width:172px">Condition</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>low-bytes-sent</code></td><td><strong>Caller cannot hear the agent.</strong> Also drives the SDK's ICE restart via <code>_onMediaFailure</code>.</td><td>0 bytes, 3 consecutive s</td></tr>
+        <tr><td><code>low-bytes-received</code></td><td><strong>Agent cannot hear the caller.</strong></td><td>0 bytes, 3 consecutive s</td></tr>
+        <tr><td><code>audioOutputLevel</code> &lt; 300<br>with <code>bytesReceived</code> &gt; 0</td><td><strong>Far end is sending silence.</strong> RTP is flowing, so no SDK warning fires. Must be detected in the sentinel. Causes: muted caller, carrier dead air, hold music ending. Corresponds to server-side <code>32014</code>.</td><td>sustained &ge; 10&nbsp;s</td></tr>
+      </tbody>
+    </table>
+    <p class="tnote"> 300 is ~0.9&nbsp;% of the 0&ndash;32767 range, matching the SDK's own <code>minStandardDeviation: 327.67</code>. Unsuitable alternatives: <code>constant-audio-input-level</code> (suppressed while muted, ~10&nbsp;s to fire, measures the local microphone), <code>constant-audio-output-level</code> (excluded from the app-facing <code>emit</code> by an explicit guard), and the <code>volume</code> event (local measurement; <code>inputVolume</code> stays active when the send path is dead).
+    </p>
+
+    <h3 class="sh"><span class="dot sdk"></span>Field handling</h3>
+    <table class="tbl">
+      <thead><tr><th style="width:270px">Field</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>mos</code></td><td>Nullable. <code>null</code> on the first sample and before ICE completes. Guard before averaging.</td></tr>
+        <tr><td><code>packetsLostFraction</code></td><td>Range 0&ndash;100, a percentage. The SDK's <code>max: 1</code> threshold means 1&nbsp;%.</td></tr>
+        <tr><td><code>audioInputLevel</code>, <code>audioOutputLevel</code></td><td>Range 0&ndash;32767, representing &minus;100&nbsp;dB to &minus;30&nbsp;dB.</td></tr>
+        <tr><td><code>codecName</code></td><td>Browser-derived casing (<code>'opus'</code>, <code>'PCMU'</code>). <code>Call.Codec</code> is lowercase. Normalise before comparing.</td></tr>
+        <tr><td><code>localAddress</code>, <code>remoteAddress</code></td><td>Documented but never delivered. <code>StatsMonitor._createSample</code> omits them.</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sh"><span class="dot sdk"></span>Pre-shift preflight</h3>
+    <p class="sub" style="margin-bottom:18px"> <code>Device.runPreflight(token, options)</code> is static, free, and requires no ACI. Run it at agent login to identify networks that will not support a call, before any customer is routed. It is the only free source for <code>isTurnRequired</code>; the in-call sentinel cannot determine that without injecting a custom <code>RTCPeerConnection</code>.
+    </p>
+
+    <table class="tbl">
+      <thead><tr><th style="width:270px">Report field</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td><code>isTurnRequired</code></td><td><strong>UDP is blocked.</strong> True when a selected candidate has <code>candidateType === 'relay'</code>, so media is relayed through TURN. Agent network topology rarely changes mid-shift, so once per login is sufficient.</td></tr>
+        <tr><td><code>callQuality</code></td><td>Verdict from average MOS. Absent if no sample had <code>mos &gt; 0</code>.</td></tr>
+        <tr><td><code>stats.{jitter,mos,rtt}</code></td><td><code>{average, min, max}</code>. Absent under the same condition.</td></tr>
+        <tr><td><code>warnings[]</code></td><td><code>{name, description, rtcWarning?}</code>.</td></tr>
+        <tr><td><code>networkTiming</code></td><td>Keys are <code>signaling</code>, <code>peerConnection</code>, <code>ice</code>, <code>dtls</code>. Each <code>{start, end?, duration?}</code>.</td></tr>
+        <tr><td><code>selectedIceCandidatePairStats</code>, <code>iceCandidateStats[]</code></td><td>Selected pair and full candidate list.</td></tr>
+      </tbody>
+    </table>
+    <p class="tnote"> Requires a valid access token and a record-and-play TwiML application, or <code>&lt;Echo/&gt;</code> with <code>fakeMicInput: true</code>, in which case the test self-terminates after 20&nbsp;s. Option defaults: <code>codecPreferences: ['pcmu','opus']</code>, <code>edge: 'roaming'</code>, <code>signalingTimeoutMs: 10000</code>. Events are <code>completed(report)</code>, <code>connected()</code>, <code>failed(err)</code>, <code>sample()</code>, <code>warning()</code>; <code>completed</code> and <code>failed</code> are mutually exclusive, and <code>stop()</code> raises <code>failed</code> with <code>31008</code> rather than <code>completed</code>. <strong><code>warning</code> emits a single object</strong>, not <code>(name, data)</code> as the typings claim. Documentation examples showing <code>iceConnection</code>, <code>preflightTest</code>, <code>startTime</code> or <code>warningsCleared</code> are from the mobile preflight schema.
+    </p>
+  </section>
+
+  <!-- 04 TRIP + ENABLE -->
+  <section class="blk" aria-label="Trip and enable"> <span class="snum">04</span>
+    <h2>Trip conditions and enabling ACI</h2>
+
+    <h3 class="sh basic"><span class="badge">Basic</span> Trip on a single call</h3>
+    <p class="sub" style="margin-bottom:18px"> The sentinel beacons <code>degraded</code> on any of: p50 MOS &lt; 3.1 sustained &ge;&nbsp;15&nbsp;s; <code>low-bytes-sent</code> or <code>low-bytes-received</code>; far-end silence &ge;&nbsp;10&nbsp;s; <code>reconnecting</code>; or two or more concurrent <code>high-*</code> warnings. On a trip, enable ACI for the tenant subaccount. Add <code>VoiceTrace</code> only when a carrier fault is suspected and a ticket is intended.
+    </p>
+
+    <pre><span class="cm"># GET first. POST is a partial update: sending only</span>
+<span class="cm"># AdvancedFeatures=false leaves VoiceTrace unchanged.</span>
+curl -G https://insights.twilio.com/v1/Voice/Settings \
+  --data-urlencode <span class="st">"SubaccountSid=AC..."</span> \
+  -u <span class="st">"$TWILIO_API_KEY:$TWILIO_API_SECRET"</span>
+
+curl -X POST https://insights.twilio.com/v1/Voice/Settings \
+  --data-urlencode <span class="st">"SubaccountSid=AC..."</span> \
+  --data-urlencode <span class="fl">"AdvancedFeatures=true"</span> \
+  --data-urlencode <span class="fl">"VoiceTrace=true"</span> \
+  -u <span class="st">"$TWILIO_API_KEY:$TWILIO_API_SECRET"</span></pre>
+
+    <table class="tbl" style="margin-top:22px">
+      <thead><tr><th style="width:198px">Detail</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Credentials</td><td>Parent account, plus <code>SubaccountSid</code>. Standard API key is sufficient</td></tr>
+        <tr><td>Inheritance</td><td>Parent enablement does not cascade to subaccounts</td></tr>
+        <tr><td>Audit</td><td>No list endpoint. One <code>GET</code> per subaccount</td></tr>
+        <tr><td>SDK</td><td><code>client.insights.v1.settings().update({...})</code>. The unversioned accessor is deprecated</td></tr>
+        <tr><td>Close window on</td><td>Root cause attributed or recorded inconclusive, or 5 consecutive clean calls</td></tr>
+      </tbody>
+    </table>
+    <p class="tnote"> The basic form spends on every trip, including agent-local faults the sentinel has already diagnosed. Section 06 removes that.
+    </p>
+  </section>
+
+  <!-- 05 DIAGNOSIS -->
+  <section class="blk" aria-label="Diagnosis"> <span class="snum">05</span>
+    <h2>Diagnosis with ACI enabled</h2>
+    <p class="sub"> The two legs are separate Call SIDs with non-overlapping edge sets, correlated by <code>ConferenceSid</code>. The client leg carries <code>sdk_edge</code> and <code>client_edge</code>; the PSTN leg carries <code>carrier_edge</code> only. There is no client-side MOS for a PSTN caller.
+    </p>
+
+    <table class="tbl">
+      <thead><tr><th>Evidence</th><th style="width:186px">Cause</th><th style="width:214px">Action</th></tr></thead>
+      <tbody>
+        <tr><td><code>sdk_edge</code> tags present, <code>carrier_edge</code> clean</td><td>Agent last mile</td><td>Checklist below</td></tr>
+        <tr><td><code>carrier_edge</code> <code>high_packet_loss</code> / <code>silence</code>, <code>sdk_edge</code> clean</td><td>Carrier</td><td>Support ticket with Voice Trace</td></tr>
+        <tr><td><code>sdk_edge</code> tag <code>ice_failure</code></td><td>UDP blocked or NAT</td><td>Firewall and egress rules</td></tr>
+        <tr><td>Flat high RTT, <code>settings.edge</code> vs <code>edge_location</code> mismatch</td><td>Edge homing</td><td><code>new Device(token,{edge})</code></td></tr>
+        <tr><td><code>detected_issues.region_configuration</code> &gt; 0, or <code>mixer_region</code> &ne; <code>mixer_region_requested</code></td><td>Region configuration</td><td>Conference <code>region</code></td></tr>
+        <tr><td><code>packet_delay_variation</code> concentrated at <code>d200</code>/<code>d300</code></td><td>Jitter</td><td><code>jitter_buffer_size</code></td></tr>
+        <tr><td>Loss present, <code>codec: PCMU</code></td><td>Codec</td><td>Prefer Opus</td></tr>
+        <tr><td><code>carrier_edge</code> <code>high_pdd</code>, <code>q850_cause</code>, <code>last_sip_response_num</code></td><td>Routing or reject</td><td>Carrier escalation</td></tr>
+      </tbody>
+    </table>
+    <p class="tnote"> <strong>Tag thresholds differ by edge.</strong> On <code>sdk_edge</code>, <code>high_latency</code> is RTT &gt; 400&nbsp;ms and <code>low_mos</code> is &lt; 3.5. On gateway edges, <code>high_latency</code> is internal RTP traversal &gt; 150&nbsp;ms. Do not aggregate them. Omitting the <code>Edge</code> parameter on <code>/Metrics</code> and <code>/Events</code> returns only the default edge for the call type.
+    </p>
+
+    <div class="checks" style="margin-top:30px">
+      <div class="checkcol">
+        <h4><span class="dot sdk"></span>Agent-side checks</h4>
+        <ul>
+          <li>Ethernet vs Wi-Fi; 2.4 vs 5&nbsp;GHz; channel congestion</li>
+          <li>VPN or SD-WAN: split-tunnel media</li>
+          <li>Proxy such as Zscaler: media bypass</li>
+          <li>UDP 10000&ndash;20000 egress to Twilio media IPs</li>
+          <li>DSCP honoured downstream (<code>dscp:true</code> is the SDK default)</li>
+          <li>Bandwidth contention, CPU load, competing tabs</li>
+          <li><code>codecPreferences</code> defaults to <code>['pcmu','opus']</code>. Opus is more loss-tolerant</li>
+        </ul>
+      </div>
+      <div class="checkcol">
+        <h4><span class="dot backend"></span>Disabling ACI</h4>
+        <ol>
+          <li><strong>Export</strong> metrics, events and summaries to local storage. Availability after clearing the flag is undocumented.</li>
+          <li><strong>Wait</strong> for the ingestion tail, up to 30&nbsp;min after the last instrumented call ends.</li>
+          <li><strong>GET, then POST both flags false</strong> explicitly.</li>
+          <li><strong>Voice Trace separately</strong>, once Support has the Call SIDs. Raw RTP, 10-day retention, documented consent and HIPAA caveats. <code>&lt;Pay&gt;</code> and PCI-redacted calls are never captured.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 ADVANCED -->
+  <section class="blk" aria-label="Correlation"> <span class="snum">06</span>
+    <h2>Correlation before escalating</h2>
+    <h3 class="sh adv" style="margin-top:0"><span class="badge">Advanced</span> Optional refinement to section 04</h3>
+    <p class="sub"> Most quality complaints are agent-local. For those, the sentinel already holds the answer, so ACI adds cost without adding information. Correlating a tenant's concurrent calls before escalating avoids that, and correlation itself is free.
+    </p>
+
+    <table class="tbl">
+      <thead><tr><th>Observation across the tenant's concurrent calls</th><th style="width:172px">Scope</th><th style="width:158px">Action</th></tr></thead>
+      <tbody>
+        <tr><td>1 agent degraded, &ge;&nbsp;3 peers clean</td><td>Agent-local</td><td class="act stop">Do not escalate</td></tr>
+        <tr><td>&ge;&nbsp;2 agents sharing an egress IP</td><td>Site network</td><td class="act go">Escalate</td></tr>
+        <tr><td>&ge;&nbsp;30&nbsp;% of active calls, across &ge;&nbsp;2 sites</td><td>Tenant-wide or carrier</td><td class="act go">Escalate + trace</td></tr>
+        <tr><td>Agents clean, but <code>32014</code> or far-end silence on &ge;&nbsp;2 calls</td><td>PSTN side</td><td class="act go">Escalate + trace</td></tr>
+      </tbody>
+    </table>
+
+    <ul class="caveats" style="margin-top:22px">
+      <li><strong>Site is derived at ingest from the observed source IP</strong> of the beacon request. A browser cannot reliably determine its own public egress address, and a self-reported value would be incorrect behind NAT, VPN, or a proxy. Fully remote tenants show one site per agent, reducing the site rule to the agent-local rule.</li>
+      <li><strong>Correlation requires at least 3 concurrent calls.</strong> Tenants below that cannot be disambiguated. Fall back to escalating after 2 consecutive degraded calls, with attribution unknown until ACI data arrives.</li>
+    </ul>
+  </section>
+
+  <!-- 07 LATER -->
+  <section class="blk" aria-label="Later considerations"> <span class="snum">07</span>
+    <h2>Later considerations</h2>
+    <p class="sub">Deliberately excluded from the initial scope.</p>
+
+    <ul class="later">
+      <li>
+        <div class="lt">Budget-bounded windows</div>
+        <p>ACI bills per minute across the whole subaccount, so a fixed wall-clock window costs a different amount per tenant depending on concurrency: 40 concurrent calls consume the same minutes in 25&nbsp;min that 5 concurrent calls consume in 200. Expressing the window in billable minutes gives every tenant the same ceiling. Indicative: 1,000 billable min &asymp;&nbsp;$2.40 per incident; 10,000 &asymp;&nbsp;$24 per tenant per month as a hard stop. <strong>Requires per-tenant usage tracking.</strong></p>
+      </li>
+      <li>
+        <div class="lt">Repeat-offender reporting</div>
+        <p>A short window will miss faults that recur on a longer cycle. Rather than enabling ACI permanently, count trips per tenant and report any tenant tripping 3 or more times in 7 days for manual review.</p>
+      </li>
+      <li>
+        <div class="lt">Threshold calibration</div>
+        <p>The MOS bands and trip conditions here are starting values. Distributions vary by codec, geography and headset. Collect client-side history before fixing them.</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 08 GOTCHAS -->
+  <section class="blk" aria-label="Gotchas"> <span class="snum">08</span>
+    <h2>Gotchas</h2>
+    <ul class="caveats">
+      <li><strong><code>32014</code> is <code>WARNING</code> level, not <code>ERROR</code>.</strong> So are <code>32011</code>, <code>32009</code>, and conference-callback failure <code>16011</code>. A <code>LogLevel=error</code> filter on Monitor Alerts excludes them.</li>
+      <li><strong>Event Streams mirrors configured callbacks.</strong> <code>com.twilio.voice.status-callback.*</code> fires only if <code>statusCallback</code> and <code>statusCallbackEvent</code> are already set on the call.</li>
+      <li><strong><code>com.twilio.voice.webhook.status-callback.*</code> is deprecated.</strong> Use the form without <code>webhook.</code>.</li>
+      <li><strong>The conference <code>statusCallback</code> URL is set by the first participant to join</strong> and cannot be overridden by later participants.</li>
+      <li><strong>Monitor Alerts list and instance responses differ.</strong> <code>request_variables</code>, <code>response_body</code> and headers are returned only on the instance resource, requiring list-then-fetch per SID.</li>
+      <li><strong><code>ice-connectivity-lost</code> emits with no second argument.</strong> <code>call.on('warning',(n,d)=&gt;d.threshold)</code> throws.</li>
+      <li><strong>Thresholds are not configurable in v2.x.</strong> <code>StatsMonitor.Options.thresholds</code> is private, and the injection hook is typed <code>new () =&gt; StatsMonitor</code>, which cannot carry configuration.</li>
+      <li><strong><code>low-mos</code> fires at MOS &lt; 3 in the JS SDK; Insights tags <code>low_mos</code> at &lt; 3.5.</strong> Choose one threshold or client and ACI data will disagree.</li>
+      <li><strong>Conference recordings are single-channel.</strong> Per-leg dual-channel analysis requires separate <code>&lt;Start&gt;&lt;Recording&gt;</code> per leg.</li>
+      <li><strong>Retention:</strong> Voice Insights 30 days, Voice Trace 10 days, Event Streams application logs 7 days.</li>
+    </ul>
+  </section>
+
+  <!-- DOCS -->
+  <section class="docs" aria-label="Documentation">
+    <h3>References</h3>
+    <p class="sub">Where documentation and shipped SDK source disagree, source is used and the conflict noted inline.</p>
+    <div class="docs-grid">
+      <div class="col-paid">
+        <h4><span class="dot paid"></span>Voice Insights</h4>
+        <ul>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/frequently-asked-questions">Voice Insights FAQ</a> <span class="desc">Forward-only gate and persistence behaviour</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/voice-insights-settings-resource">Settings resource</a> <span class="desc">AdvancedFeatures, VoiceTrace, SubaccountSid</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/call-metrics-resource">Call Metrics resource</a> <span class="desc">Per-interval timeseries by edge</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/details-call-tags">Call tags</a> <span class="desc">Thresholds per edge</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/api/conference/conference-summary-resource">Conference Summary</a> <span class="desc">detected_issues, mixer_region</span></li>
+          <li><a href="https://www.twilio.com/docs/glossary/what-voice-trace">What is Voice Trace?</a> <span class="desc">RTP capture, Support-only, 10-day retention</span></li>
+          <li><a href="https://www.twilio.com/docs/api/errors/17007">Error 17007</a> <span class="desc">Ineligible-call response</span></li>
+        </ul>
+      </div>
+      <div class="col-sdk">
+        <h4><span class="dot sdk"></span>Voice JS SDK</h4>
+        <ul>
+          <li><a href="https://github.com/twilio/twilio-voice.js">twilio-voice.js</a> <span class="desc">Threshold source: statsMonitor.ts, call.ts</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/sdks/javascript/twiliocall">Call object</a> <span class="desc">sample, warning, reconnecting</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/sdks/javascript/twiliodevice">Device object</a> <span class="desc">edge, codecPreferences, dscp defaults</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/sdks/javascript/twiliopreflighttest">PreflightTest</a> <span class="desc">isTurnRequired, callQuality</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/details-sdk-call-quality-events">SDK quality events</a> <span class="desc">Warning catalog. Sample-window figures are stale</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/sdks/error-codes">SDK error codes</a> <span class="desc">53405 media, 53001 signaling</span></li>
+        </ul>
+      </div>
+      <div class="col-twilio">
+        <h4><span class="dot twilio"></span>Free server-side surfaces</h4>
+        <ul>
+          <li><a href="https://www.twilio.com/docs/voice/api/call-resource">Call resource</a> <span class="desc">Status callback parameters</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/twiml/conference">&lt;Conference&gt; TwiML</a> <span class="desc">13 StatusCallbackEvent values</span></li>
+          <li><a href="https://www.twilio.com/docs/usage/monitor-alert">Monitor Alerts</a> <span class="desc">32014, at WARNING level</span></li>
+          <li><a href="https://www.twilio.com/docs/events/event-types/errors/error-logs">Error logs Event Stream</a> <span class="desc">Real-time error delivery</span></li>
+        </ul>
+      </div>
+      <div class="col-paid">
+        <h4><span class="dot carrier"></span>Other</h4>
+        <ul>
+          <li><a href="https://www.twilio.com/docs/voice/voice-insights/event-streams/call-insights-events">Call Insights Event Streams</a> <span class="desc">call-metrics.sdk (plural), call-event.sdk (singular)</span></li>
+          <li><a href="https://www.twilio.com/en-us/voice/pricing/us">Voice pricing</a> <span class="desc">$0.0024/min, US PAYG list</span></li>
+          <li><a href="https://www.twilio.com/docs/usage/bulkexport">BulkExports</a> <span class="desc">Records beyond 30 days</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot"> Verified against twilio-voice.js master @ 2dc8cb6 (tag 2.18.3) &middot; docs as of 2026-07-30<br> Unverified items and rejected alternatives are enumerated in the companion spec
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
