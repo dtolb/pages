@@ -1069,6 +1069,26 @@ test('setConfig clears sustain state', () => {
   b.setConfig(config())
   assert.equal(b.observe(sample({ ts: 3000, lossPct: 12 }), NONE, false), null)
 })
+
+test('reconfiguring while tripped does not emit a spurious recovery', () => {
+  // The threshold matrix is a user-facing control, and a non-null return drives
+  // a paid-feature toggle. Editing config mid-incident must not read as recovery.
+  const b = new BeaconEvaluator(config())
+  b.observe(sample({ ts: 0, lossPct: 12 }), NONE, false)
+  assert.equal(b.observe(sample({ ts: 3000, lossPct: 12 }), NONE, false)?.tripped, true)
+
+  b.setConfig(config())
+  // Still breaching at 12% — nothing recovered, so nothing may be reported.
+  assert.equal(b.observe(sample({ ts: 4000, lossPct: 12 }), NONE, false), null)
+  // Once the restarted sustain elapses it re-trips.
+  assert.equal(b.observe(sample({ ts: 7000, lossPct: 12 }), NONE, false)?.tripped, true)
+})
+
+test('reconfiguring while untripped does not emit a spurious trip', () => {
+  const b = new BeaconEvaluator(config())
+  b.setConfig(config())
+  assert.equal(b.observe(sample({ ts: 0, lossPct: 0 }), NONE, false), null)
+})
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1110,6 +1130,8 @@ export class BeaconEvaluator {
   /** metric → timestamp when its condition most recently became true. */
   #since = new Map<MetricKey, number>()
   #tripped = false
+  /** When true, the next observe() re-derives state honestly but reports no transition. */
+  #suppressNextEmission = false
 
   constructor(config: BeaconConfig) {
     this.#config = config
@@ -1118,6 +1140,8 @@ export class BeaconEvaluator {
   setConfig(config: BeaconConfig): void {
     this.#config = config
     this.#since.clear()
+    this.#tripped = false
+    this.#suppressNextEmission = true
   }
 
   /** Returns the new state on a transition, or null when nothing changed. */
@@ -1167,6 +1191,17 @@ export class BeaconEvaluator {
     }
 
     const tripped = reasons.length > 0
+
+    // A reconfigure restarts every sustain clock, so the very next observe()
+    // would otherwise report a spurious transition (e.g. a false "recovered"
+    // while still breaching). Re-derive #tripped honestly but swallow that
+    // one emission; a genuine transition will surface on the observe() after.
+    if (this.#suppressNextEmission) {
+      this.#suppressNextEmission = false
+      this.#tripped = tripped
+      return null
+    }
+
     if (tripped === this.#tripped) return null
 
     this.#tripped = tripped
@@ -1198,7 +1233,7 @@ function combinatorSatisfied(config: BeaconConfig, metCount: number): boolean {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd ~/code/aci-quality-poc && pnpm test && pnpm typecheck`
-Expected: 12 beacon tests pass; typecheck exits 0.
+Expected: 14 beacon tests pass (12 core + 2 reconfigure regressions); typecheck exits 0.
 
 - [ ] **Step 5: Commit**
 
@@ -1631,7 +1666,7 @@ export class Store {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd ~/code/aci-quality-poc && pnpm test && pnpm typecheck`
-Expected: 11 store tests pass; full suite green (**51 tests** — 3 types, 3 architecture, 8 window, 14 verdict, 12 beacon, 11 store); typecheck exits 0.
+Expected: 11 store tests pass; full suite green (**53 tests** — 3 types, 3 architecture, 8 window, 14 verdict, 14 beacon, 11 store); typecheck exits 0.
 
 - [ ] **Step 5: Commit**
 
@@ -1673,7 +1708,7 @@ Expected: `clean`, then a successful commit.
 
 ## Definition of done
 
-- [ ] `pnpm test` — 51 tests pass, 0 fail
+- [ ] `pnpm test` — 53 tests pass, 0 fail
 - [ ] `pnpm typecheck` — exits 0
 - [ ] `tests/architecture.test.ts` demonstrably fails when a forbidden import is introduced (proven in Task 3, Step 2)
 - [ ] No runtime dependencies in `package.json`; `typescript` and `@types/node` are the only devDependencies
