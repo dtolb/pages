@@ -6,7 +6,7 @@
 
 **Architecture:** Everything in this plan is a pure library with no network, no browser, and no Twilio account. `shared/types.ts` is the contract that both sides of the boundary consume. `web/sentinel/*` turns a stream of normalized samples into a verdict and a beacon decision. `server/poc/store.ts` persists calls, events, and feedback. The architecture test greps the source tree to prove no POC code imports a Twilio SDK.
 
-**Tech Stack:** Node 24 (native TypeScript type-stripping), pnpm, `node:test`, `node:assert/strict`, `node:sqlite`. One devDependency: `typescript`, used only for `tsc --noEmit`.
+**Tech Stack:** Node 24 (native TypeScript type-stripping), pnpm, `node:test`, `node:assert/strict`, `node:sqlite`. Two devDependencies: `typescript` (for `tsc --noEmit`) and `@types/node`.
 
 **Spec:** `~/code/pages/docs/superpowers/specs/2026-07-30-aci-quality-poc-design.md` @ `09be198`
 
@@ -23,7 +23,7 @@ Every task's requirements implicitly include this section.
 - **The test directory MUST be named `tests/` (plural).** Node's test runner treats every file inside a directory named `test/` (singular) as a test file, which would make it try to execute `fixtures.ts`. With `tests/`, only `*.test.ts` is collected. Verified: `tests/fixtures.ts` is correctly ignored.
 - **Relative imports MUST carry the `.ts` extension** (`from './window.ts'`). Node's type-stripping requires it; omitting it fails at runtime.
 - **`package.json` must set `"type": "module"`.**
-- **Zero runtime dependencies in this plan.** `node:sqlite` and `node:test` are built in. The only devDependency is `typescript`.
+- **Zero runtime dependencies in this plan.** `node:sqlite` and `node:test` are built in. The only devDependencies are `typescript` and `@types/node` (pinned to major 24 to match the runtime).
 - **The dependency rule:** code under `server/poc/` or `web/sentinel/` must NOT import `twilio` or `@twilio/voice-sdk`. Task 3 enforces this with a test.
 - **`lossPct` is 0–100, a percentage, never 0–1.**
 - **`mos` is nullable.** Every consumer must handle `null`; unguarded arithmetic yields `NaN`.
@@ -1631,7 +1631,7 @@ Expected: `clean`, then a successful commit.
 - [ ] `pnpm test` — 46 tests pass, 0 fail
 - [ ] `pnpm typecheck` — exits 0
 - [ ] `tests/architecture.test.ts` demonstrably fails when a forbidden import is introduced (proven in Task 3, Step 2)
-- [ ] No runtime dependencies in `package.json`; `typescript` is the only devDependency
+- [ ] No runtime dependencies in `package.json`; `typescript` and `@types/node` are the only devDependencies
 - [ ] `git log` shows one commit per task
 
 ## What Plan 2 picks up
