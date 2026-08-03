@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Connect — Implementation Guide</title>
+<style>
+:root{
+  --plane:#0e0e13; --surface-1:#14141a; --surface-2:#1c1c24; --surface-3:#23232d;
+  --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#8a8a93;
+  --hairline:rgba(255,255,255,0.10); --hairline-2:rgba(255,255,255,0.06);
+  --accent:#f22f46;
+  --s1:#3987e5; --s2:#199e70; --s3:#9085e9; --s4:#d95926;
+  --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--plane);color:var(--ink-1);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+#deck{height:100vh;display:flex;flex-direction:column}
+.slide{flex:1;display:none;padding:32px 52px 16px;overflow-y:auto;animation:fade .25s ease}
+.slide.on{display:flex;flex-direction:column}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.slide{animation:none}*{transition:none!important}}
+
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.eyebrow .num{color:var(--accent);font-weight:700;letter-spacing:.04em}
+h1{font-size:42px;line-height:1.08;margin:0 0 12px;font-weight:640;letter-spacing:-.02em}
+h2{font-size:28px;line-height:1.15;margin:0 0 8px;font-weight:620;letter-spacing:-.015em}
+.sub{color:var(--ink-2);font-size:15px;line-height:1.5;margin:0 0 18px;max-width:78ch}
+
+/* nav bar */
+#bar{height:46px;flex:0 0 46px;border-top:1px solid var(--hairline);display:flex;align-items:center;gap:16px;padding:0 22px;background:var(--surface-1)}
+#dots{display:flex;gap:7px;flex:1}
+.dot{width:9px;height:9px;border-radius:50%;background:#33333d;border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s}
+.dot:hover{background:#4d4d59;transform:scale(1.25)}
+.dot.on{background:var(--accent)}
+#count{color:var(--ink-3);font-size:12px;font-variant-numeric:tabular-nums;letter-spacing:.05em}
+.navbtn{background:var(--surface-3);color:var(--ink-2);border:1px solid var(--hairline);border-radius:7px;width:30px;height:26px;cursor:pointer;font-size:13px;line-height:1}
+.navbtn:hover{color:var(--ink-1);border-color:rgba(255,255,255,.24)}
+.hint{color:var(--ink-3);font-size:11px}
+
+/* cards + layout */
+.card{background:var(--surface-2);border:1px solid var(--hairline);border-radius:12px;padding:18px 20px;min-width:0}
+.card.tight{padding:12px 15px}
+.card-h{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 12px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.two{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;min-height:0}
+.two.even{grid-template-columns:1fr 1fr}
+.stack{display:flex;flex-direction:column;gap:14px;min-height:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.note{font-size:12px;color:var(--ink-3);line-height:1.55;border-left:2px solid var(--hairline);padding-left:11px;margin-top:12px}
+.tag{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);border:1px solid var(--hairline);border-radius:5px;padding:2px 7px}
+.kbd{font-family:var(--mono);font-size:11px;background:var(--surface-3);border:1px solid var(--hairline);border-radius:4px;padding:1px 5px;color:var(--ink-2)}
+.swatch{width:9px;height:9px;border-radius:2.5px;flex:0 0 9px}
+
+/* buttons */
+.btn{background:var(--surface-3);color:var(--ink-1);border:1px solid var(--hairline);border-radius:8px;padding:8px 14px;font-size:13px;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.btn:hover{background:#2b2b37;border-color:rgba(255,255,255,.22)}
+.btn:disabled{opacity:.38;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:560}
+.btn.primary:hover{background:#ff4459}
+.btn.ghost{background:transparent}
+.btn.sm{padding:5px 10px;font-size:12px}
+
+/* chips */
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.chip{background:var(--surface-2);border:1px solid var(--hairline);border-radius:20px;padding:6px 13px;font-size:12.5px;cursor:pointer;color:var(--ink-2);font-family:inherit;transition:all .15s}
+.chip:hover{color:var(--ink-1);border-color:rgba(255,255,255,.22)}
+.chip.on{background:rgba(242,47,70,.13);border-color:rgba(242,47,70,.5);color:#fff}
+.chip.s1.on{background:rgba(57,135,229,.13);border-color:rgba(57,135,229,.5);color:#fff}
+.chip.s2.on{background:rgba(25,158,112,.13);border-color:rgba(25,158,112,.5);color:#fff}
+.chip.s3.on{background:rgba(144,133,233,.13);border-color:rgba(144,133,233,.5);color:#fff}
+.chip.s4.on{background:rgba(217,89,38,.13);border-color:rgba(217,89,38,.5);color:#fff}
+
+/* lang toggle */
+#langBar{position:fixed;top:14px;right:130px;z-index:100;display:flex;gap:0;background:var(--surface-2);border:1px solid var(--hairline);border-radius:8px;overflow:hidden}
+.lang-btn{background:transparent;color:var(--ink-3);border:0;padding:6px 13px;font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s}
+.lang-btn.on{background:var(--accent);color:#fff}
+
+/* code blocks */
+.code-wrap{position:relative;margin:0}
+.code-block{background:#0a0a10;border:1px solid var(--hairline);border-radius:9px;padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.65;color:#c9d1d9;overflow-x:auto;margin:0;white-space:pre}
+.code-block .c{color:#6a9955}
+.code-block .k{color:#569cd6}
+.code-block .s{color:#ce9178}
+.code-block .f{color:#dcdcaa}
+.code-block .n{color:#9cdcfe}
+.copy-btn{position:absolute;top:8px;right:8px;background:var(--surface-3);color:var(--ink-3);border:1px solid var(--hairline);border-radius:5px;padding:3px 9px;font-size:11px;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.copy-btn:hover{color:var(--ink-1);border-color:rgba(255,255,255,.3)}
+.lang-block{display:none}
+.lang-block.on{display:block}
+
+/* step path */
+.path{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;animation:pop .22s ease}
+.step+.step{border-top:1px solid var(--hairline-2)}
+.step-n{flex:0 0 22px;height:22px;border-radius:50%;background:var(--surface-3);border:1px solid var(--hairline);font-size:10.5px;display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-variant-numeric:tabular-nums;margin-top:1px}
+.step-n.done{background:rgba(12,163,12,.2);border-color:rgba(12,163,12,.4);color:var(--good)}
+.step-t{font-size:13px;font-weight:560;line-height:1.4}
+.step-d{font-size:11.5px;color:var(--ink-3);line-height:1.45;margin-top:2px}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* layer diagram */
+.layer-diagram{display:flex;flex-direction:column;gap:10px;flex:1;justify-content:center}
+.lyr{opacity:0;transform:translateY(8px);transition:opacity .38s,transform .38s;pointer-events:none}
+.lyr.on{opacity:1;transform:none;pointer-events:auto}
+.lyr-box{border:1px solid var(--hairline);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.lyr-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 32px}
+.lyr-title{font-size:13.5px;font-weight:560}
+.lyr-desc{font-size:12px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+.lyr-conn{text-align:center;color:var(--ink-3);font-size:13px;line-height:1;padding:2px 0}
+
+/* flow hops */
+.flow{display:flex;align-items:stretch;gap:0;margin:10px 0 6px}
+.hop{flex:1;position:relative;padding:13px 12px;background:var(--surface-2);border:1px solid var(--hairline);opacity:.2;transition:opacity .3s,background .3s}
+.hop:first-child{border-radius:10px 0 0 10px}
+.hop:last-child{border-radius:0 10px 10px 0}
+.hop+.hop{border-left:0}
+.hop.on{opacity:1}
+.hop.cur{background:var(--surface-3);box-shadow:inset 0 0 0 1px rgba(242,47,70,.35)}
+.hop-ch{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.hop-t{font-size:13px;font-weight:540;line-height:1.3;margin-bottom:4px}
+.hop-d{font-size:11px;color:var(--ink-2);line-height:1.4}
+
+/* toggles */
+.toggles{display:flex;flex-direction:column;gap:10px}
+.tg{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;cursor:pointer}
+.tg-track{width:40px;height:22px;border-radius:12px;background:#33333d;position:relative;transition:background .2s;flex:0 0 40px}
+.tg-track::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--ink-2);transition:transform .2s,background .2s}
+.tg input{position:absolute;opacity:0;pointer-events:none}
+.tg input:checked+.tg-track{background:rgba(12,163,12,.55)}
+.tg input:checked+.tg-track::after{transform:translateX(18px);background:#fff}
+
+/* decision panel */
+.req-row{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.req-item{display:flex;gap:8px;align-items:baseline;font-size:12.5px}
+.req-k{color:var(--ink-3);flex:0 0 100px}
+.req-v{color:var(--ink-1);line-height:1.5}
+
+/* checklist */
+.checklist{display:flex;flex-direction:column;gap:8px}
+.cl-item{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;background:var(--surface-2);border:1px solid var(--hairline);border-radius:9px;cursor:pointer;transition:background .15s}
+.cl-item:hover{background:var(--surface-3)}
+.cl-item.done{opacity:.5}
+.cl-item.done .cl-title{text-decoration:line-through}
+.cl-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--hairline);flex:0 0 18px;display:flex;align-items:center;justify-content:center;font-size:10px;margin-top:1px;transition:all .2s}
+.cl-item.done .cl-check{background:var(--good);border-color:var(--good);color:#fff}
+.cl-title{font-size:13px;font-weight:540;line-height:1.35}
+.cl-desc{font-size:11.5px;color:var(--ink-3);line-height:1.45;margin-top:2px}
+
+/* before/after */
+.diff-row{display:flex;gap:14px;flex:1}
+.diff-panel{flex:1;display:flex;flex-direction:column;gap:8px}
+.diff-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px;display:flex;align-items:center;gap:7px}
+
+/* agenda */
+.agenda{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.ag-item{display:flex;align-items:flex-start;gap:14px;background:var(--surface-2);border:1px solid var(--hairline);border-left:2px solid var(--accent);border-radius:9px;padding:12px 16px;cursor:pointer;text-align:left;color:var(--ink-1);font-family:inherit;font-size:14px;line-height:1.4;transition:background .15s,transform .15s}
+.ag-item:hover{background:var(--surface-3);transform:translateX(3px)}
+.ag-item .n{color:var(--accent);font-weight:700;font-size:12px;padding-top:2px;flex:0 0 20px}
+.ag-item .go{margin-left:auto;color:var(--ink-3);font-size:13px}
+
+/* provider info */
+.provider-info{background:var(--surface-2);border:1px solid var(--hairline);border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6;color:var(--ink-2);min-height:52px;transition:all .2s}
+.provider-info strong{color:var(--ink-1)}
+
+@media(max-width:1080px){
+  .two,.two.even{grid-template-columns:1fr}
+  .slide{padding:22px 22px 14px}
+  h1{font-size:32px} h2{font-size:22px}
+  .flow{flex-direction:column}
+  .hop:first-child{border-radius:10px 10px 0 0}
+  .hop:last-child{border-radius:0 0 10px 10px}
+  .hop+.hop{border-left:1px solid var(--hairline);border-top:0}
+}
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+<!-- ============ 0 · TITLE ============ -->
+<section class="slide on">
+  <div class="eyebrow"><span class="num">Agent Connect — Implementation Guide</span><span>·</span><span>Twilio Conversations</span></div>
+  <h1>Build an AI Voice Agent<br>with Twilio</h1>
+  <p class="sub">Architecture first. Working code second. Seven slides — one interactive step each.</p>
+  <div class="agenda" id="agenda"></div>
+</section>
+
+<!-- ============ 1 · WHAT IS AGENT CONNECT ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">01</span><span>What Agent Connect does</span></div>
+  <h2>Middleware between your LLM and Twilio channels</h2>
+  <p class="sub">Click through the layers. Provider chips below show what changes when you swap models.</p>
+  <div class="two" style="flex:1">
+    <div class="layer-diagram" id="layerDiagram"></div>
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><span>Bring your own model or framework</span></div>
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">LLM Providers</div>
+        <div class="chips" id="providerChips" style="margin-bottom:12px"></div>
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+          Agent Frameworks
+          <span class="tag" style="border-color:rgba(144,133,233,.5);color:var(--s3);text-transform:none;letter-spacing:0">different architectural layer</span>
+        </div>
+        <div class="chips" id="frameworkChips" style="margin-bottom:10px"></div>
+        <div class="provider-info" id="providerInfo">Select a provider or framework to see how it fits.</div>
+      </div>
+      <div class="card tight">
+        <div class="card-h"><span>What stays the same regardless of choice</span></div>
+        <div style="font-size:12.5px;color:var(--ink-2);line-height:1.65">
+          Channel handling &nbsp;·&nbsp; Memory integration &nbsp;·&nbsp; Webhook routing &nbsp;·&nbsp; Voice / SMS logic &nbsp;·&nbsp; Conversation Orchestrator config
+        </div>
+      </div>
+      <div class="row" style="margin-top:4px">
+        <button class="btn primary" id="layerNext">Add the next layer ▸</button>
+        <button class="btn ghost sm" id="layerReset">Restart</button>
+        <span style="font-size:11.5px;color:var(--ink-3)" id="layerLbl"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 · KEY DECISIONS ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">02</span><span>Key decisions before you build</span></div>
+  <h2>Three choices. One requirements panel.</h2>
+  <p class="sub">Flip the conditions and the right panel updates — services to create, env vars required, estimated time.</p>
+  <div class="two" style="flex:1">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><span>Channel</span></div>
+        <div class="chips" id="chanChips"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span>Conversation Memory</span></div>
+        <div class="toggles">
+          <label class="tg" id="memTg">
+            <span>Include Conversation Memory</span>
+            <input type="checkbox" id="memCheck"><span class="tg-track"></span>
+          </label>
+        </div>
+        <div class="note" style="margin-top:10px">Memory enables name-based greetings, past interaction recall, and profile-based personalisation. Add it now or later — the Agent Connect init takes one parameter.</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span>LLM Provider</span><span style="font-size:11px;color:var(--ink-3)">frameworks added at implementation</span></div>
+        <div class="chips" id="provChips2" style="margin-bottom:0"></div>
+      </div>
+    </div>
+    <div class="card" style="overflow-y:auto">
+      <div class="card-h"><span>What you need to build this</span></div>
+      <div id="reqPanel"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 · SETUP ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">03</span><span>Setup sequence</span></div>
+  <h2>Six steps from zero to running server</h2>
+  <p class="sub">Step through the setup. Language toggle switches all commands.</p>
+  <div class="two" style="flex:1">
+    <div class="card" style="overflow-y:auto">
+      <div class="card-h"><span>Steps</span></div>
+      <div class="path" id="setupSteps"></div>
+      <div class="row" style="margin-top:14px;border-top:1px solid var(--hairline);padding-top:12px">
+        <button class="btn primary" id="setupNext">Next step ▸</button>
+        <button class="btn ghost sm" id="setupReset">Restart</button>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card" style="flex:1;overflow-y:auto">
+        <div class="card-h"><span>Commands so far</span><span style="font-size:11px;color:var(--ink-3)" id="setupCount"></span></div>
+        <div id="setupCode" style="overflow-y:auto;max-height:100%"></div>
+      </div>
+      <div class="note" style="margin-top:0">ngrok free tier generates a new URL on each restart — update <span class="kbd">TWILIO_VOICE_PUBLIC_DOMAIN</span> and reconfigure webhooks. Paid plan supports static domains.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4 · FIRST VOICE AGENT ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">04</span><span>First agent — Voice</span></div>
+  <h2>Inbound call → AI response in under 1s</h2>
+  <p class="sub">Step through the call flow. The panel on the right shows the code for the active hop.</p>
+  <div class="flow" id="voiceFlow" style="margin-bottom:14px"></div>
+  <div class="two" style="flex:1">
+    <div class="card" style="overflow-y:auto">
+      <div class="card-h"><span id="voiceCodeLabel">Code — select a hop</span><span class="illus-tag">representative</span></div>
+      <div id="voiceCode"><div class="note" style="border:0;padding:0;margin:0;color:var(--ink-3);font-size:12.5px">Advance to see the code for each step.</div></div>
+    </div>
+    <div class="stack">
+      <div class="card tight">
+        <div class="card-h"><span>What Agent Connect handles for you</span></div>
+        <div style="font-size:12.5px;color:var(--ink-2);line-height:1.7">
+          WebSocket lifecycle &nbsp;·&nbsp; Audio encoding / decoding &nbsp;·&nbsp; ConversationRelay framing &nbsp;·&nbsp; Turn management &nbsp;·&nbsp; Error recovery &nbsp;·&nbsp; Channel-specific TwiML
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="voiceNext">Next hop ▸</button>
+        <button class="btn ghost sm" id="voiceReset">Restart</button>
+        <span style="font-size:11.5px;color:var(--ink-3)" id="voiceLbl"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5 · ADDING MEMORY ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">05</span><span>Adding Conversation Memory</span></div>
+  <h2>One env var. One parameter. Instant context.</h2>
+  <p class="sub">Before/after shows what changes in the agent's behaviour and in your code.</p>
+  <div class="diff-row" style="flex:1">
+    <div class="diff-panel">
+      <div class="diff-label"><span style="width:8px;height:8px;border-radius:50%;background:var(--critical);display:inline-block"></span>Without Memory</div>
+      <div class="card" style="flex:1">
+        <div class="card-h"><span>Agent response</span></div>
+        <div style="background:var(--surface-3);border:1px solid var(--hairline);border-radius:9px;padding:11px 14px;font-size:13.5px;line-height:1.5;color:var(--ink-2);margin-bottom:14px;font-style:italic">
+          "Hi there! How can I help you today?"
+        </div>
+        <div class="code-wrap">
+          <pre class="code-block lang-block py on"><span class="c"># agent initialisation</span>
+agent = AgentConnect(
+    account_sid=os.environ[<span class="s">"TWILIO_ACCOUNT_SID"</span>],
+    auth_token=os.environ[<span class="s">"TWILIO_AUTH_TOKEN"</span>]
+)</pre>
+          <pre class="code-block lang-block ts"><span class="c">// agent initialisation</span>
+<span class="k">const</span> agent = <span class="k">new</span> <span class="f">AgentConnect</span>({
+  accountSid: process.env.<span class="n">TWILIO_ACCOUNT_SID</span>,
+  authToken: process.env.<span class="n">TWILIO_AUTH_TOKEN</span>
+});</pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:20px;flex:0 0 24px">→</div>
+    <div class="diff-panel">
+      <div class="diff-label"><span style="width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block"></span>With Memory</div>
+      <div class="card" style="flex:1">
+        <div class="card-h"><span>Agent response</span></div>
+        <div style="background:rgba(57,135,229,.10);border:1px solid rgba(57,135,229,.3);border-radius:9px;padding:11px 14px;font-size:13.5px;line-height:1.5;margin-bottom:14px">
+          "Hi Sarah! Last time you asked about your open assignment in Dallas — have you had a chance to review it?"
+        </div>
+        <div class="code-wrap">
+          <pre class="code-block lang-block py on"><span class="c"># add one env var + one parameter</span>
+agent = AgentConnect(
+    account_sid=os.environ[<span class="s">"TWILIO_ACCOUNT_SID"</span>],
+    auth_token=os.environ[<span class="s">"TWILIO_AUTH_TOKEN"</span>],
+    memory_store_id=os.environ[<span class="s">"TWILIO_MEMORY_STORE_ID"</span>]
+)</pre>
+          <pre class="code-block lang-block ts"><span class="c">// add one env var + one parameter</span>
+<span class="k">const</span> agent = <span class="k">new</span> <span class="f">AgentConnect</span>({
+  accountSid: process.env.<span class="n">TWILIO_ACCOUNT_SID</span>,
+  authToken: process.env.<span class="n">TWILIO_AUTH_TOKEN</span>,
+  memoryStoreId: process.env.<span class="n">TWILIO_MEMORY_STORE_ID</span>
+});</pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <div class="note" style="margin-top:10px">Memory Store ID comes from the Conversation Orchestrator quickstart. Set the <span class="kbd">firstName</span> trait on a profile to enable name-based greetings.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 · SMS + PROVIDER SWAP ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">06</span><span>Add SMS · Swap providers</span></div>
+  <h2>Two more channels. Any model. Same agent.</h2>
+  <p class="sub">SMS is five lines different from Voice. Provider chips below show what changes in initialisation code.</p>
+  <div class="two" style="flex:1">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><span>Adding SMS — what changes</span></div>
+        <div class="code-wrap">
+          <pre class="code-block lang-block py on"><span class="c"># Voice: TwiML endpoint</span>
+<span class="k">@app</span>.route(<span class="s">"/twiml"</span>, methods=[<span class="s">"POST"</span>])
+<span class="k">def</span> <span class="f">twiml</span>():
+    <span class="k">return</span> agent.handle_voice(request)
+
+<span class="c"># SMS: Webhook endpoint — that's it</span>
+<span class="k">@app</span>.route(<span class="s">"/webhook"</span>, methods=[<span class="s">"POST"</span>])
+<span class="k">def</span> <span class="f">webhook</span>():
+    <span class="k">return</span> agent.handle_sms(request)</pre>
+          <pre class="code-block lang-block ts"><span class="c">// Voice: TwiML endpoint</span>
+app.post(<span class="s">'/twiml'</span>, (req, res) => {
+  <span class="k">return</span> agent.<span class="f">handleVoice</span>(req, res);
+});
+
+<span class="c">// SMS: Webhook endpoint — that's it</span>
+app.post(<span class="s">'/webhook'</span>, (req, res) => {
+  <span class="k">return</span> agent.<span class="f">handleSms</span>(req, res);
+});</pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+      </div>
+      <div class="note" style="margin-top:0">Configure both webhook URLs in your Twilio Console. Same agent instance, same Memory store, same LLM — just a second route.</div>
+    </div>
+    <div class="stack" style="min-height:0;overflow:hidden">
+      <div class="card" style="flex:1;overflow-y:auto;min-height:0">
+        <div class="card-h">
+          <span>LLM provider init — all four</span>
+          <span style="font-size:11px;color:var(--ink-3)">only this block changes</span>
+        </div>
+        <div id="providerThread" style="display:flex;flex-direction:column;gap:16px"></div>
+      </div>
+      <div class="card tight">
+        <div class="card-h"><span>What never changes when you swap</span></div>
+        <div style="font-size:12.5px;color:var(--ink-2);line-height:1.7">
+          Agent Connect init &nbsp;·&nbsp; Channel handlers &nbsp;·&nbsp; Memory config &nbsp;·&nbsp; Webhook routes &nbsp;·&nbsp; TwiML logic
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7 · PRODUCTION CHECKLIST ============ -->
+<section class="slide">
+  <div class="eyebrow"><span class="num">07</span><span>Production checklist</span></div>
+  <h2>Before you go live</h2>
+  <p class="sub">Click each item to mark it done. All six before you hand off to production traffic.</p>
+  <div class="two even" style="flex:1;align-items:start;gap:20px">
+    <div class="checklist" id="checklist"></div>
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><span>Debug mode</span></div>
+        <div class="code-wrap">
+          <pre class="code-block">TWILIO_LOG_LEVEL=debug uv run python \
+  getting_started/examples/partners/<span class="n">openai_chat_completions</span>.py</pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <div class="note" style="margin-top:10px">Shows memory retrieval, LLM calls, channel events. Python only: dashboard at <span class="kbd">localhost:8000/dashboard</span>.</div>
+      </div>
+      <div class="card tight">
+        <div class="card-h"><span>Webhook signature validation</span></div>
+        <div class="code-wrap">
+          <pre class="code-block lang-block py on"><span class="k">from</span> twilio.request_validator <span class="k">import</span> RequestValidator
+validator = RequestValidator(os.environ[<span class="s">"TWILIO_AUTH_TOKEN"</span>])
+<span class="k">if not</span> validator.<span class="f">validate</span>(url, params, sig):
+    <span class="k">return</span> <span class="s">"Forbidden"</span>, 403</pre>
+          <pre class="code-block lang-block ts"><span class="k">import</span> { validateRequest } <span class="k">from</span> <span class="s">'twilio'</span>;
+<span class="k">if</span> (!<span class="f">validateRequest</span>(authToken, sig, url, params))
+  <span class="k">return</span> res.<span class="f">status</span>(403).<span class="f">send</span>(<span class="s">'Forbidden'</span>);</pre>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- end #deck -->
+
+<div id="bar">
+  <button class="navbtn" id="prev" aria-label="Previous">‹</button>
+  <button class="navbtn" id="next" aria-label="Next">›</button>
+  <div id="dots"></div>
+  <span class="hint"><span class="kbd">←</span> <span class="kbd">→</span></span>
+  <span id="count"></span>
+</div>
+
+<div id="langBar">
+  <button class="lang-btn on" id="btnPy" onclick="setLang('py')">Python</button>
+  <button class="lang-btn" id="btnTs" onclick="setLang('ts')">TypeScript</button>
+</div>
+
+<button class="btn sm" onclick="dlDeck()" style="position:fixed;top:14px;right:18px;z-index:100">⬇ Download</button>
+
+<script>
+"use strict";
+
+/* =================== deck shell =================== */
+const slides = [...document.querySelectorAll('.slide')];
+const dotsEl = document.getElementById('dots');
+const countEl = document.getElementById('count');
+let cur = 0;
+
+slides.forEach((_, i) => {
+  const d = document.createElement('button');
+  d.className = 'dot' + (i === 0 ? ' on' : '');
+  d.setAttribute('aria-label', 'Slide ' + (i + 1));
+  d.onclick = () => go(i);
+  dotsEl.appendChild(d);
+});
+const dots = [...dotsEl.children];
+
+function go(i) {
+  if (i < 0 || i >= slides.length) return;
+  slides[cur].classList.remove('on');
+  dots[cur].classList.remove('on');
+  cur = i;
+  slides[cur].classList.add('on');
+  dots[cur].classList.add('on');
+  slides[cur].scrollTop = 0;
+  countEl.textContent = (cur + 1) + ' / ' + slides.length;
+}
+countEl.textContent = '1 / ' + slides.length;
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+addEventListener('keydown', e => {
+  const t = e.target.tagName;
+  if (t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { go(cur + 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   { go(cur - 1); e.preventDefault(); }
+  if (e.key === 'Home') go(0);
+  if (e.key === 'End')  go(slides.length - 1);
+});
+
+/* =================== language toggle =================== */
+let lang = 'py';
+function setLang(l) {
+  lang = l;
+  document.getElementById('btnPy').classList.toggle('on', l === 'py');
+  document.getElementById('btnTs').classList.toggle('on', l === 'ts');
+  document.querySelectorAll('.lang-block').forEach(el => {
+    el.classList.toggle('on', el.classList.contains(l));
+  });
+  renderSetupCode();
+  renderVoiceCode();
+  renderSwapCode();
+}
+
+/* =================== copy button =================== */
+function copyCode(btn) {
+  const pre = btn.previousElementSibling.classList.contains('on')
+    ? btn.previousElementSibling
+    : btn.parentElement.querySelector('.lang-block.on') || btn.previousElementSibling;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = 'Copy', 1800);
+  });
+}
+
+/* =================== 0 · agenda =================== */
+const AGENDA = [
+  'What Agent Connect does — layers, providers, BYOLLM',
+  'Key decisions before you build — channel, memory, provider',
+  'Setup sequence — clone, configure, run',
+  'First Voice agent — call flow and webhook code',
+  'Adding Conversation Memory — one parameter, instant context',
+  'Add SMS and swap LLM providers — same agent, new capabilities',
+  'Production checklist — debug, validate, go live'
+];
+const agEl = document.getElementById('agenda');
+AGENDA.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.className = 'ag-item';
+  b.innerHTML = '<span class="n">0' + (i + 1) + '</span><span>' + t + '</span><span class="go">→</span>';
+  b.onclick = () => go(i + 1);
+  agEl.appendChild(b);
+});
+
+/* =================== 1 · layer diagram =================== */
+const LAYERS = [
+  { icon: '🤖', color: 'rgba(57,135,229,.2)', border: 'var(--s1)', title: 'Your LLM', desc: 'OpenAI, AWS Bedrock, Azure Foundry, LangChain — any provider you already use.' },
+  { icon: '🔌', color: 'rgba(242,47,70,.15)', border: 'var(--accent)', title: 'Agent Connect SDK', desc: 'Handles WebSocket lifecycle, audio encoding, turn management, and channel routing. You write the agent logic; it handles the plumbing.' },
+  { icon: '📡', color: 'rgba(25,158,112,.2)', border: 'var(--s2)', title: 'Twilio Channels — Voice + SMS', desc: 'ConversationRelay for voice, Programmable Messaging for SMS. Same SDK interface for both.' },
+  { icon: '🧠', color: 'rgba(144,133,233,.2)', border: 'var(--s3)', title: 'Conversation Memory + Orchestrator', desc: 'Persistent customer profiles, past interaction history, and multi-turn context surfaced automatically on each new call or message.' }
+];
+const LAYER_LABELS = ['Your LLM', '+ Agent Connect SDK', '+ Voice + SMS channels', '+ Memory + Orchestrator'];
+let layIdx = 0;
+
+const diagEl = document.getElementById('layerDiagram');
+LAYERS.forEach((l, i) => {
+  if (i > 0) {
+    const conn = document.createElement('div');
+    conn.className = 'lyr-conn lyr';
+    conn.id = 'lconn' + i;
+    conn.textContent = '▲  reads / passes context  ▲';
+    diagEl.appendChild(conn);
+  }
+  const box = document.createElement('div');
+  box.className = 'lyr';
+  box.id = 'lyr' + i;
+  box.innerHTML = '<div class="lyr-box" style="background:' + l.color + ';border-color:' + l.border + '">'
+    + '<div class="lyr-icon" style="background:' + l.color + '">' + l.icon + '</div>'
+    + '<div><div class="lyr-title">' + l.title + '</div><div class="lyr-desc">' + l.desc + '</div></div></div>';
+  diagEl.appendChild(box);
+});
+
+function drawLayers() {
+  let elIdx = 0;
+  LAYERS.forEach((_, i) => {
+    if (i > 0) {
+      const c = document.getElementById('lconn' + i);
+      if (c) c.classList.toggle('on', i <= layIdx);
+      elIdx++;
+    }
+    const b = document.getElementById('lyr' + i);
+    if (b) b.classList.toggle('on', i <= layIdx);
+  });
+  document.getElementById('layerLbl').textContent = layIdx >= 0 ? LAYER_LABELS[layIdx] : 'click to begin';
+  const btn = document.getElementById('layerNext');
+  btn.disabled = layIdx >= LAYERS.length - 1;
+  btn.textContent = layIdx >= LAYERS.length - 1 ? 'Complete' : (layIdx === 0 && !document.getElementById('lyr0').classList.contains('on') ? 'Start ▸' : 'Add next layer ▸');
+}
+document.getElementById('layerNext').onclick = () => { if (layIdx < LAYERS.length - 1) { layIdx++; drawLayers(); } };
+document.getElementById('layerReset').onclick = () => { layIdx = 0; drawLayers(); };
+drawLayers();
+
+/* providers on slide 1 */
+const LLM_PROVIDERS = [
+  { id: 'openai',  label: 'OpenAI',       info: '<strong>OpenAI</strong> — Chat Completions or Responses API. Model: <code>gpt-4o</code>. Set <code>OPENAI_API_KEY</code>.' },
+  { id: 'bedrock', label: 'AWS Bedrock',  info: '<strong>AWS Bedrock</strong> — managed inference runtime on AWS. Hosts Anthropic, Meta, Amazon, and others. Uses <code>boto3</code> bedrock-runtime client with AWS credentials. Different SDK pattern from direct APIs — but Agent Connect sees the same callable interface.' },
+  { id: 'foundry', label: 'Azure Foundry',info: '<strong>Azure AI Foundry</strong> — Microsoft\'s managed model deployment platform. Hosts OpenAI models and others. Uses <code>AzureOpenAI</code> client. Enterprise auth via Entra ID. Set <code>AZURE_OPENAI_ENDPOINT</code>, <code>AZURE_OPENAI_KEY</code>, <code>AZURE_DEPLOYMENT_NAME</code>.' }
+];
+const FRAMEWORKS = [
+  { id: 'lc',  label: 'LangChain',  info: '<strong>LangChain</strong> — an orchestration layer, not a model. Wraps any LLM provider and adds tool calling, retrieval chains, and prompt management. Agent Connect handles channels; LangChain handles what the agent does with the message. Passes a standard callable through.' },
+  { id: 'lg',  label: 'LangGraph',  info: '<strong>LangGraph</strong> — a graph-based agent state machine built on LangChain. Architecturally distinct: you define nodes (reasoning steps) and edges (transitions), and LangGraph manages execution flow. Agent Connect routes the conversation in; LangGraph decides what happens next. Best fit for multi-step, tool-heavy agents where you want explicit control over state.' }
+];
+const PROVIDERS = [...LLM_PROVIDERS, ...FRAMEWORKS];
+let selectedProvider = 'openai';
+const pChips = document.getElementById('providerChips');
+const fChips = document.getElementById('frameworkChips');
+const pInfo  = document.getElementById('providerInfo');
+
+LLM_PROVIDERS.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'chip s1' + (i === 0 ? ' on' : '');
+  b.textContent = p.label;
+  b.onclick = () => {
+    selectedProvider = p.id;
+    [...pChips.children].forEach((c, j) => c.classList.toggle('on', LLM_PROVIDERS[j].id === p.id));
+    [...fChips.children].forEach(c => c.classList.remove('on'));
+    pInfo.innerHTML = p.info;
+    syncProviderChips();
+  };
+  pChips.appendChild(b);
+});
+FRAMEWORKS.forEach(p => {
+  const b = document.createElement('button');
+  b.className = 'chip s3';
+  b.textContent = p.label;
+  b.onclick = () => {
+    selectedProvider = p.id;
+    [...pChips.children].forEach(c => c.classList.remove('on'));
+    [...fChips.children].forEach((c, j) => c.classList.toggle('on', FRAMEWORKS[j].id === p.id));
+    pInfo.innerHTML = p.info;
+    syncProviderChips();
+  };
+  fChips.appendChild(b);
+});
+pInfo.innerHTML = LLM_PROVIDERS[0].info;
+
+function syncProviderChips() {
+  const provEl = document.getElementById('provChips2');
+  if (provEl) [...provEl.children].forEach((c, j) => {
+    if (PROVIDERS[j]) c.classList.toggle('on', PROVIDERS[j].id === selectedProvider);
+  });
+  renderReqPanel();
+  renderSwapCode();
+}
+
+/* =================== 2 · decisions =================== */
+let chan = 'voice', mem = false, prov = 'openai';
+
+const CHAN_OPTS = [
+  { id: 'voice', label: 'Voice' },
+  { id: 'sms',   label: 'SMS' },
+  { id: 'both',  label: 'Both' }
+];
+const chanChipsEl = document.getElementById('chanChips');
+CHAN_OPTS.forEach(c => {
+  const b = document.createElement('button');
+  b.className = 'chip' + (c.id === 'voice' ? ' on' : '');
+  b.textContent = c.label;
+  b.onclick = () => {
+    chan = c.id;
+    [...chanChipsEl.children].forEach((el, j) => el.classList.toggle('on', CHAN_OPTS[j].id === c.id));
+    renderReqPanel();
+  };
+  chanChipsEl.appendChild(b);
+});
+
+document.getElementById('memCheck').onchange = e => { mem = e.target.checked; renderReqPanel(); };
+
+const PROV_LABELS = { openai: 'OpenAI', bedrock: 'AWS Bedrock', foundry: 'Azure Foundry' };
+const provChips2El = document.getElementById('provChips2');
+LLM_PROVIDERS.forEach(p => {
+  const b = document.createElement('button');
+  b.className = 'chip s1' + (p.id === 'openai' ? ' on' : '');
+  b.textContent = p.label;
+  b.onclick = () => {
+    selectedProvider = p.id; prov = p.id;
+    syncProviderChips();
+  };
+  provChips2El.appendChild(b);
+});
+
+const ENV_BASE = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_API_KEY_SID', 'TWILIO_API_KEY_SECRET', 'TWILIO_PHONE_NUMBER'];
+const ENV_VOICE = ['TWILIO_VOICE_PUBLIC_DOMAIN'];
+const ENV_MEM   = ['TWILIO_MEMORY_STORE_ID'];
+const ENV_CONV  = ['TWILIO_CONVERSATION_CONFIG_ID'];
+const ENV_PROV  = {
+  openai:  ['OPENAI_API_KEY'],
+  bedrock: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION'],
+  foundry: ['AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_KEY', 'AZURE_DEPLOYMENT_NAME']
+};
+const SVC_BASE  = ['Conversation Configuration'];
+const SVC_MEM   = ['Memory Store (via Conversation Orchestrator)'];
+const TIME = { voice: '~20 min', sms: '~15 min', both: '~30 min' };
+
+function renderReqPanel() {
+  const envVars = [...ENV_BASE, ...(chan !== 'sms' ? ENV_VOICE : []), ...(mem ? ENV_MEM : []), ...ENV_CONV, ...(ENV_PROV[selectedProvider] || [])];
+  const svcs = [...SVC_BASE, ...(mem ? SVC_MEM : [])];
+  const el = document.getElementById('reqPanel');
+  el.innerHTML = '<div class="req-row">'
+    + row('Services to create', svcs.map(s => '<div>' + s + '</div>').join(''))
+    + row('Webhooks', chan === 'both' ? '/twiml (Voice) + /webhook (SMS)' : chan === 'voice' ? '/twiml' : '/webhook')
+    + row('Env vars', '<div style="font-family:var(--mono);font-size:11.5px;line-height:1.8;color:var(--ink-1)">' + envVars.join('<br>') + '</div>')
+    + row('Provider', PROV_LABELS[selectedProvider] || selectedProvider)
+    + row('Est. setup', TIME[chan] + (mem ? ' + 5 min for Memory Store' : ''))
+    + '</div>';
+}
+function row(k, v) {
+  return '<div class="req-item"><span class="req-k">' + k + '</span><span class="req-v">' + v + '</span></div>';
+}
+renderReqPanel();
+
+/* =================== 3 · setup steps =================== */
+const SETUP_STEPS = [
+  {
+    t: 'Clone the repo',
+    d: 'Pick your language. Both repos include the same example structure.',
+    py: 'git clone https://github.com/twilio/twilio-agent-connect-python.git\ncd twilio-agent-connect-python',
+    ts: 'git clone https://github.com/twilio/twilio-agent-connect-typescript.git\ncd twilio-agent-connect-typescript'
+  },
+  {
+    t: 'Install dependencies',
+    d: 'Python uses uv for fast dependency management. TypeScript uses npm.',
+    py: 'pip install uv\nmake sync',
+    ts: 'npm install\nnpm run build'
+  },
+  {
+    t: 'Start ngrok tunnel',
+    d: 'Exposes your local server for Twilio webhooks. Copy the domain — no https:// prefix.',
+    py: 'ngrok http 8000\n# Copy domain → TWILIO_VOICE_PUBLIC_DOMAIN in .env',
+    ts: 'ngrok http 8000\n# Copy domain → TWILIO_VOICE_PUBLIC_DOMAIN in .env'
+  },
+  {
+    t: 'Create Twilio services',
+    d: 'Python includes a setup wizard. TypeScript uses the REST API directly.',
+    py: '# Setup wizard (recommended)\npython -m getting_started.setup\n# Opens http://localhost:8080',
+    ts: '# Create Conversation Configuration via REST\ncurl -X POST https://conversations.twilio.com/v1/Configuration \\\n  -u $ACCOUNT_SID:$AUTH_TOKEN'
+  },
+  {
+    t: 'Configure webhooks in Console',
+    d: 'Set your Twilio phone number\'s voice and messaging webhooks to your ngrok domain.',
+    py: '# Voice webhook (POST):\nhttps://your-domain.ngrok.app/twiml\n\n# SMS webhook (POST):\nhttps://your-domain.ngrok.app/webhook',
+    ts: '# Voice webhook (POST):\nhttps://your-domain.ngrok.app/twiml\n\n# SMS webhook (POST):\nhttps://your-domain.ngrok.app/webhook'
+  },
+  {
+    t: 'Run the agent server',
+    d: 'Call your Twilio number. The agent answers.',
+    py: 'uv run python \\\n  getting_started/examples/partners/openai_chat_completions.py',
+    ts: 'cd getting_started/examples/openai\nnpm run dev'
+  }
+];
+let setupIdx = 0;
+
+function renderSetupSteps() {
+  const el = document.getElementById('setupSteps');
+  el.innerHTML = '';
+  SETUP_STEPS.forEach((s, i) => {
+    if (i >= setupIdx) return;
+    const d = document.createElement('div');
+    d.className = 'step';
+    d.innerHTML = '<div class="step-n done">✓</div><div><div class="step-t">' + s.t + '</div><div class="step-d">' + s.d + '</div></div>';
+    el.appendChild(d);
+  });
+  document.getElementById('setupCount').textContent = setupIdx + ' / ' + SETUP_STEPS.length;
+  const btn = document.getElementById('setupNext');
+  btn.disabled = setupIdx >= SETUP_STEPS.length;
+  btn.textContent = setupIdx >= SETUP_STEPS.length ? 'Complete ✓' : 'Next step ▸';
+  renderSetupCode();
+}
+function renderSetupCode() {
+  const el = document.getElementById('setupCode');
+  if (setupIdx === 0) {
+    el.innerHTML = '<div style="color:var(--ink-3);font-size:12.5px">Click "Next step" to begin.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  SETUP_STEPS.forEach((s, i) => {
+    if (i >= setupIdx) return;
+    const isCurrent = i === setupIdx - 1;
+    const code = lang === 'py' ? s.py : s.ts;
+    const block = document.createElement('div');
+    block.style.cssText = 'display:flex;flex-direction:column;gap:6px' + (i > 0 ? ';margin-top:16px' : '');
+    block.innerHTML =
+      '<div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:7px;color:' + (isCurrent ? 'var(--ink-1)' : 'var(--ink-3)') + '">'
+      + '<span style="width:16px;height:16px;border-radius:50%;background:' + (isCurrent ? 'var(--accent)' : 'rgba(12,163,12,.25)') + ';border:1px solid ' + (isCurrent ? 'var(--accent)' : 'rgba(12,163,12,.5)') + ';display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex:0 0 16px">'
+      + (isCurrent ? (i + 1) : '✓') + '</span>'
+      + s.t + '</div>'
+      + '<div class="code-wrap"><pre class="code-block" style="opacity:' + (isCurrent ? '1' : '0.45') + '">' + esc(code) + '</pre>'
+      + (isCurrent ? '<button class="copy-btn" onclick="copyCode(this)">Copy</button>' : '')
+      + '</div>';
+    el.appendChild(block);
+  });
+  // scroll to bottom to show latest
+  el.scrollTop = el.scrollHeight;
+}
+document.getElementById('setupNext').onclick = () => { if (setupIdx < SETUP_STEPS.length) { setupIdx++; renderSetupSteps(); } };
+document.getElementById('setupReset').onclick = () => { setupIdx = 0; renderSetupSteps(); };
+renderSetupSteps();
+
+/* =================== 4 · voice flow =================== */
+const VOICE_HOPS = [
+  { ch: 'Caller', t: 'Inbound call', d: 'Caller dials your Twilio number.', py: null, ts: null },
+  { ch: 'SuperNetwork', t: 'PSTN ingress', d: 'Twilio routes the call through the SuperNetwork.', py: null, ts: null },
+  {
+    ch: '/twiml', t: 'TwiML webhook', d: 'Twilio calls your /twiml endpoint. You return ConversationRelay instructions.',
+    py: '@app.route("/twiml", methods=["POST"])\ndef twiml():\n    response = VoiceResponse()\n    connect = response.connect()\n    connect.conversation_relay(\n        url=f\'wss://{os.environ["TWILIO_VOICE_PUBLIC_DOMAIN"]}/agent\'\n    )\n    return str(response), 200, {"Content-Type": "text/xml"}',
+    ts: 'app.post(\'/twiml\', (req, res) => {\n  const twiml = new VoiceResponse();\n  const connect = twiml.connect();\n  connect.conversationRelay({\n    url: `wss://${process.env.TWILIO_VOICE_PUBLIC_DOMAIN}/agent`\n  });\n  res.type(\'text/xml\').send(twiml.toString());\n});'
+  },
+  {
+    ch: 'Agent Connect', t: 'WebSocket session', d: 'Agent Connect opens a WebSocket, handles audio frames, manages the turn.',
+    py: '# Agent Connect handles the WebSocket internally.\n# You supply the LLM callable.\nagent = AgentConnect(\n    account_sid=os.environ["TWILIO_ACCOUNT_SID"],\n    auth_token=os.environ["TWILIO_AUTH_TOKEN"]\n)\n\n# Register your LLM handler\n@agent.on_message\ndef handle(messages, context):\n    return llm_client.chat(messages)',
+    ts: '// Agent Connect handles the WebSocket internally.\n// You supply the LLM callable.\nconst agent = new AgentConnect({\n  accountSid: process.env.TWILIO_ACCOUNT_SID,\n  authToken: process.env.TWILIO_AUTH_TOKEN\n});\n\nagent.onMessage(async (messages, context) => {\n  return llmClient.chat(messages);\n});'
+  },
+  {
+    ch: 'LLM', t: 'Model inference', d: 'Agent Connect passes the conversation to your LLM. Response streams back.',
+    py: '# OpenAI example\nfrom openai import OpenAI\nclient = OpenAI(api_key=os.environ["OPENAI_API_KEY"])\n\ndef llm_call(messages, context):\n    resp = client.chat.completions.create(\n        model="gpt-4o",\n        messages=messages,\n        stream=True\n    )\n    return resp',
+    ts: '// OpenAI example\nimport OpenAI from \'openai\';\nconst openai = new OpenAI();\n\nasync function llmCall(messages, context) {\n  const stream = await openai.chat.completions.create({\n    model: \'gpt-4o\',\n    messages,\n    stream: true\n  });\n  return stream;\n}'
+  },
+  { ch: 'Caller', t: 'Audio response', d: 'Agent Connect converts the LLM response to speech and plays it back to the caller.', py: null, ts: null }
+];
+let vIdx = 0;
+const flowEl = document.getElementById('voiceFlow');
+VOICE_HOPS.forEach((h, i) => {
+  const d = document.createElement('div');
+  d.className = 'hop';
+  d.innerHTML = '<div class="hop-ch"><span class="swatch" style="background:var(--s' + (Math.min(i + 1, 4)) + ')"></span>' + h.ch + '</div>'
+    + '<div class="hop-t">' + h.t + '</div><div class="hop-d">' + h.d + '</div>';
+  flowEl.appendChild(d);
+});
+
+function drawVoiceFlow() {
+  [...flowEl.children].forEach((el, i) => {
+    el.classList.toggle('on', i < vIdx);
+    el.classList.toggle('cur', i === vIdx - 1);
+  });
+  document.getElementById('voiceLbl').textContent = vIdx ? (vIdx + ' / ' + VOICE_HOPS.length) : '';
+  const btn = document.getElementById('voiceNext');
+  btn.disabled = vIdx >= VOICE_HOPS.length;
+  btn.textContent = vIdx >= VOICE_HOPS.length ? 'Flow complete' : 'Next hop ▸';
+  renderVoiceCode();
+}
+function renderVoiceCode() {
+  const el = document.getElementById('voiceCode');
+  const lbl = document.getElementById('voiceCodeLabel');
+  if (!vIdx) { el.innerHTML = '<div class="note" style="border:0;padding:0;margin:0;color:var(--ink-3);font-size:12.5px">Advance to see the code for each step.</div>'; lbl.textContent = 'Code — select a hop'; return; }
+  const h = VOICE_HOPS[vIdx - 1];
+  lbl.textContent = 'Code — ' + h.ch;
+  const code = lang === 'py' ? h.py : h.ts;
+  if (!code) { el.innerHTML = '<div class="note" style="border:0;padding:0;margin:0;color:var(--ink-3);font-size:12.5px">This hop is handled by Twilio infrastructure — no code required.</div>'; return; }
+  el.innerHTML = '<div class="code-wrap"><pre class="code-block">' + esc(code) + '</pre><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>';
+}
+document.getElementById('voiceNext').onclick = () => { if (vIdx < VOICE_HOPS.length) { vIdx++; drawVoiceFlow(); } };
+document.getElementById('voiceReset').onclick = () => { vIdx = 0; drawVoiceFlow(); };
+drawVoiceFlow();
+
+/* =================== 6 · provider swap =================== */
+const SWAP_CODE = {
+  openai: {
+    py: '# OpenAI\nfrom openai import OpenAI\nclient = OpenAI(api_key=os.environ["OPENAI_API_KEY"])\nmodel = "gpt-4o"',
+    ts: '// OpenAI\nimport OpenAI from \'openai\';\nconst client = new OpenAI();\nconst model = \'gpt-4o\';'
+  },
+  bedrock: {
+    py: '# AWS Bedrock\nimport boto3\nclient = boto3.client(\n    "bedrock-runtime",\n    region_name=os.environ["AWS_DEFAULT_REGION"]\n)\nmodel = "anthropic.claude-3-5-sonnet-20241022-v2:0"',
+    ts: '// AWS Bedrock\nimport { BedrockRuntimeClient } from \'@aws-sdk/client-bedrock-runtime\';\nconst client = new BedrockRuntimeClient({\n  region: process.env.AWS_DEFAULT_REGION\n});\nconst model = \'anthropic.claude-3-5-sonnet-20241022-v2:0\';'
+  },
+  foundry: {
+    py: '# Azure AI Foundry\nfrom openai import AzureOpenAI\nclient = AzureOpenAI(\n    azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],\n    api_key=os.environ["AZURE_OPENAI_KEY"],\n    api_version="2024-02-01"\n)\nmodel = os.environ["AZURE_DEPLOYMENT_NAME"]',
+    ts: '// Azure AI Foundry\nimport { AzureOpenAI } from \'openai\';\nconst client = new AzureOpenAI({\n  endpoint: process.env.AZURE_OPENAI_ENDPOINT,\n  apiKey: process.env.AZURE_OPENAI_KEY,\n  apiVersion: \'2024-02-01\'\n});\nconst model = process.env.AZURE_DEPLOYMENT_NAME;'
+  },
+  lc: {
+    py: '# LangChain — orchestration layer, not a model\nfrom langchain_openai import ChatOpenAI\nfrom langchain_core.messages import HumanMessage\n\nllm = ChatOpenAI(model="gpt-4o")\n\n# Agent Connect calls this; LangChain handles the rest\ndef handle(messages, context):\n    return llm.invoke([HumanMessage(content=m["content"]) for m in messages])',
+    ts: '// LangChain — orchestration layer, not a model\nimport { ChatOpenAI } from \'@langchain/openai\';\nimport { HumanMessage } from \'@langchain/core/messages\';\n\nconst llm = new ChatOpenAI({ model: \'gpt-4o\' });\n\n// Agent Connect calls this; LangChain handles the rest\nasync function handle(messages, context) {\n  return llm.invoke(messages.map(m => new HumanMessage(m.content)));\n}'
+  },
+  lg: {
+    py: '# LangGraph — graph-based agent state machine\n# Agent Connect routes conversation in;\n# LangGraph controls what the agent does next.\nfrom langgraph.graph import StateGraph, END\nfrom langchain_openai import ChatOpenAI\n\nllm = ChatOpenAI(model="gpt-4o")\n\ndef reason(state):\n    response = llm.invoke(state["messages"])\n    return {"messages": state["messages"] + [response]}\n\ndef should_continue(state):\n    return END  # or next node based on state\n\ngraph = StateGraph(dict)\ngraph.add_node("reason", reason)\ngraph.add_conditional_edges("reason", should_continue)\ngraph.set_entry_point("reason")\nagent_graph = graph.compile()',
+    ts: '// LangGraph — graph-based agent state machine\n// Agent Connect routes conversation in;\n// LangGraph controls what the agent does next.\nimport { StateGraph, END } from \'@langchain/langgraph\';\nimport { ChatOpenAI } from \'@langchain/openai\';\n\nconst llm = new ChatOpenAI({ model: \'gpt-4o\' });\n\nconst graph = new StateGraph({ channels: { messages: null } })\n  .addNode(\'reason\', async (state) => ({\n    messages: [...state.messages, await llm.invoke(state.messages)]\n  }))\n  .addEdge(\'reason\', END)\n  .setEntryPoint(\'reason\');\n\nconst agentGraph = graph.compile();'
+  }
+};
+
+function renderSwapCode() {
+  const el = document.getElementById('providerThread');
+  if (!el) return;
+  el.innerHTML = '';
+  const sections = [
+    { label: 'LLM Providers', color: 'var(--s1)', items: LLM_PROVIDERS },
+    { label: 'Agent Frameworks', color: 'var(--s3)', items: FRAMEWORKS }
+  ];
+  sections.forEach((sec, si) => {
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px' + (si > 0 ? ';margin-top:20px;padding-top:16px;border-top:1px solid var(--hairline)' : '');
+    hdr.textContent = sec.label;
+    el.appendChild(hdr);
+    sec.items.forEach(p => {
+      const c = SWAP_CODE[p.id];
+      if (!c) return;
+      const code = lang === 'py' ? c.py : c.ts;
+      const block = document.createElement('div');
+      block.style.marginBottom = '14px';
+      block.innerHTML =
+        '<div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:6px;display:flex;align-items:center;gap:7px">'
+        + '<span style="width:7px;height:7px;border-radius:50%;background:' + sec.color + ';display:inline-block"></span>'
+        + p.label + '</div>'
+        + '<div class="code-wrap"><pre class="code-block">' + esc(code) + '</pre>'
+        + '<button class="copy-btn" onclick="copyCode(this)">Copy</button></div>';
+      el.appendChild(block);
+    });
+  });
+}
+renderSwapCode();
+
+/* =================== 7 · checklist =================== */
+const CHECKLIST = [
+  { t: 'Static ngrok domain or production hosting', d: 'Free ngrok generates new URLs on restart. Use a paid static domain or deploy to a cloud host before going live.' },
+  { t: 'Webhook signature validation', d: 'Validate every incoming request using your Auth Token. Rejects spoofed requests.' },
+  { t: 'TWILIO_LOG_LEVEL=debug removed', d: 'Debug mode logs sensitive conversation data. Disable before production.' },
+  { t: 'Memory Store linked to Conversation Config', d: 'If using Memory, confirm your Conversation Configuration points to the correct Memory Store ID.' },
+  { t: 'Phone number webhooks updated to production URL', d: 'Verify both /twiml and /webhook point to your production domain, not ngrok.' },
+  { t: 'API keys rotated — Auth Token not in production', d: 'Use API Key SID + Secret for production. Reserve Auth Tokens for validation only.' }
+];
+const clEl = document.getElementById('checklist');
+CHECKLIST.forEach((item, i) => {
+  const d = document.createElement('div');
+  d.className = 'cl-item';
+  d.innerHTML = '<div class="cl-check"></div><div><div class="cl-title">' + item.t + '</div><div class="cl-desc">' + item.d + '</div></div>';
+  d.onclick = () => { d.classList.toggle('done'); d.querySelector('.cl-check').textContent = d.classList.contains('done') ? '✓' : ''; };
+  clEl.appendChild(d);
+});
+
+/* =================== utils =================== */
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* =================== download =================== */
+function dlDeck() {
+  fetch(window.location.href)
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'Agent-Connect-Implementation-Guide.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    })
+    .catch(() => {
+      // fallback: direct link to file
+      const a = document.createElement('a');
+      a.href = window.location.href;
+      a.download = 'Agent-Connect-Implementation-Guide.html';
+      a.click();
+    });
+}
+</script>
+</body>
+</html>
