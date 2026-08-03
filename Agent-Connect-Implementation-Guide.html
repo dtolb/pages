@@ -483,8 +483,15 @@ slides.forEach((_, i) => {
 });
 const dots = [...dotsEl.children];
 
-function go(i) {
-  if (i < 0 || i >= slides.length) return;
+/* The current slide lives in location.hash so the browser Back button steps
+   back through the deck instead of leaving the page. Hash rather than
+   pushState because pushState throws on file:// (null origin) documents. */
+function idxFromHash() {
+  const n = parseInt((location.hash.match(/^#s(\d+)$/) || [])[1], 10);
+  return n >= 1 && n <= slides.length ? n - 1 : 0;
+}
+
+function render(i) {
   slides[cur].classList.remove('on');
   dots[cur].classList.remove('on');
   cur = i;
@@ -493,7 +500,16 @@ function go(i) {
   slides[cur].scrollTop = 0;
   countEl.textContent = (cur + 1) + ' / ' + slides.length;
 }
-countEl.textContent = '1 / ' + slides.length;
+
+function go(i) {
+  if (i < 0 || i >= slides.length) return;
+  render(i);
+  const h = '#s' + (i + 1);
+  // slide 1 is also the bare URL, so don't push a redundant entry for it
+  if (location.hash !== h && !(i === 0 && !location.hash)) location.hash = h;
+}
+addEventListener('hashchange', () => render(idxFromHash()));
+render(idxFromHash());
 document.getElementById('prev').onclick = () => go(cur - 1);
 document.getElementById('next').onclick = () => go(cur + 1);
 addEventListener('keydown', e => {
