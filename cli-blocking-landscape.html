@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local caller ID into international destinations — where it breaks</title>
+<style>
+  :root {
+    --paper: #F3F4F7;       /* gray-50  — outer page bg */
+    --surface: #FFFFFF;     /* white    — cards / content */
+    --ink: #000D25;         /* Ink (blue-900) — primary text, headings */
+    --ink-2: #4D5777;       /* gray-600 — body / secondary text */
+    --muted: #7E869C;       /* gray-400 — meta, dimmer text */
+    --hairline: #DDE0E6;    /* gray-100 — borders, dividers */
+    --baseline: #9AA0B4;    /* gray-300 — faint outlines */
+    --twilio: #EF223A;      /* Twilio Red (red-450) */
+    --block: #B10F23;       /* red-600  — hard block */
+    --strip: #19ABF3;       /* blue-300 — informational: CLI stripped */
+    --info: #1866EE;        /* blue-500 — survey-attested */
+    --warn: #C08A3E;        /* amber    — surcharge / vendor-only */
+    --ok: #2E7D5B;          /* green    — permitted */
+    --neutral-wash: rgba(0,13,37,0.035);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 15px; line-height: 1.55;
+  }
+  .mono { font-family: "SF Mono", ui-monospace, "Cascadia Mono", "JetBrains Mono", monospace; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+  a { color: inherit; }
+  a.src { color: var(--info); text-decoration: none; border-bottom: 1px solid rgba(24,102,238,0.3); }
+  a.src:hover { border-bottom-color: var(--info); }
+
+  /* ---------- header (Ink brand band) ---------- */
+  header { background: var(--ink); padding: 30px 0 40px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+  .brand .wordmark { font-weight: 700; font-size: 25px; letter-spacing: -0.5px; color: #FFFFFF; }
+  .eyebrow {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--baseline);
+  }
+  h1 {
+    font-weight: 700; font-size: clamp(32px, 4.6vw, 52px); line-height: 1.05;
+    letter-spacing: -0.01em; margin: 14px 0 18px; max-width: 26ch; color: #FFFFFF;
+  }
+  .thesis { max-width: 78ch; color: rgba(255,255,255,0.72); font-size: 16.5px; }
+  .thesis strong { color: #FFFFFF; }
+  .meta-chips { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.22); border-radius: 999px;
+    padding: 4px 11px; color: rgba(255,255,255,0.78);
+  }
+
+  /* ---------- stat band (Twilio Red strip) ---------- */
+  .statband { background: var(--twilio); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .stat { padding: 24px 22px 22px; border-left: 1px solid rgba(255,255,255,0.22); }
+  .stat:first-child { border-left: none; }
+  .stat .v { font-weight: 700; font-size: 40px; line-height: 1.05; color: #FFFFFF; }
+  .stat .l { font-size: 11px; color: rgba(255,255,255,0.92); margin-top: 8px; letter-spacing: 0.02em; line-height: 1.4; }
+  @media (max-width: 860px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(3) { border-left: none; }
+    .stat:nth-child(n+3) { border-top: 1px solid rgba(255,255,255,0.22); }
+  }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 64px; }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--hairline); padding-bottom: 10px; margin-bottom: 20px; }
+  .sec-head h2 { font-weight: 700; font-size: 26px; margin: 0; }
+  .sec-head .k { font-family: "SF Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+  .lede { max-width: 82ch; color: var(--ink-2); margin: 0 0 20px; }
+  .lede strong { color: var(--ink); }
+
+  /* ---------- takeaways ---------- */
+  .takeaways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 8px; }
+  .tk { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 20px; border-top: 3px solid var(--twilio); }
+  .tk .n { font-family: "SF Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+  .tk h3 { font-size: 15.5px; font-weight: 700; margin: 8px 0 6px; }
+  .tk p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  @media (max-width: 860px) { .takeaways { grid-template-columns: 1fr; } }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 16px; align-items: center; }
+  .legend .item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
+
+  /* ---------- table ---------- */
+  .tablecard { border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .scroller { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 1080px; }
+  th {
+    text-align: left; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500;
+    padding: 12px 12px; border-bottom: 1px solid var(--hairline);
+    background: var(--surface); position: sticky; top: 0; z-index: 2;
+  }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; font-size: 13px; }
+  tbody tr:hover { background: var(--neutral-wash); }
+  tr.grouphead td {
+    background: var(--ink); color: #fff; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 12px;
+  }
+  td .cap { font-weight: 700; font-size: 13.5px; display: block; }
+  td .sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+
+  /* status badges */
+  .st {
+    display: inline-block; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 3px; font-weight: 700; white-space: nowrap;
+  }
+  .st.block { background: var(--block); color: #fff; }
+  .st.strip { background: var(--strip); color: var(--ink); }
+  .st.sur   { background: var(--warn); color: #fff; }
+  .st.pend  { background: var(--ink-2); color: #fff; }
+  .st.unres { background: var(--muted); color: #fff; }
+  .st.none  { background: var(--hairline); color: var(--ink-2); }
+
+  /* evidence pills */
+  .ev {
+    display: inline-block; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    border: 1px solid var(--hairline); border-radius: 999px; padding: 2px 7px; color: var(--muted);
+  }
+  .ev.primary  { color: var(--block); border-color: rgba(177,15,35,0.35); }
+  .ev.survey   { color: var(--info);  border-color: rgba(24,102,238,0.30); }
+  .ev.industry { color: var(--ink-2); border-color: var(--hairline); }
+  .ev.vendor   { color: var(--warn);  border-color: rgba(192,138,62,0.42); }
+
+  /* number-type cells */
+  .no  { color: var(--block); font-weight: 600; }
+  .yes { color: var(--ok); font-weight: 600; }
+  .na  { color: var(--muted); }
+  .cond { color: var(--warn); font-weight: 600; }
+
+  /* ---------- workaround cards ---------- */
+  .wa {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 16px; scroll-margin-top: 18px;
+  }
+  .wa.primary-wa { border-top: 3px solid var(--twilio); }
+  .wa .tag { font-family: "SF Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .wa h3 { font-size: 19px; font-weight: 700; margin: 7px 0 4px; }
+  .wa .applies { font-size: 12.5px; color: var(--ink-2); margin: 0 0 12px; }
+  .wa .applies b { color: var(--ink); }
+  .wa p { margin: 0 0 12px; font-size: 14px; color: var(--ink-2); }
+  .wa p strong { color: var(--ink); }
+  .wa ul { margin: 0 0 12px; padding-left: 20px; font-size: 13.5px; color: var(--ink-2); }
+  .wa li { margin-bottom: 5px; }
+  .verdict {
+    display: inline-block; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;
+    padding: 3px 8px; border-radius: 3px; margin-bottom: 10px;
+  }
+  .verdict.works { background: rgba(46,125,91,0.12); color: var(--ok); }
+  .verdict.partial { background: rgba(192,138,62,0.14); color: var(--warn); }
+  .verdict.nogo { background: rgba(177,15,35,0.10); color: var(--block); }
+
+  blockquote {
+    margin: 0 0 12px; padding: 12px 16px; background: var(--neutral-wash);
+    border-left: 3px solid var(--twilio); font-size: 13px; color: var(--ink-2);
+  }
+  blockquote .cite {
+    display: block; margin-top: 8px; font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ---------- open items ---------- */
+  .oi { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .oi > div { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 20px; }
+  .oi h3 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+  .oi ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
+  .oi li { margin-bottom: 6px; }
+  .oi .flag { border-top: 3px solid var(--twilio); }
+  @media (max-width: 860px) { .oi { grid-template-columns: 1fr; } }
+
+  .caveat {
+    background: var(--surface); border: 1px solid var(--hairline); border-left: 3px solid var(--warn);
+    border-radius: 8px; padding: 16px 18px; font-size: 13.5px; color: var(--ink-2); margin-top: 16px;
+  }
+  .caveat b { color: var(--ink); }
+
+  footer { margin: 60px 0 56px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--hairline); padding-top: 18px; }
+  footer .srcs { columns: 2; gap: 40px; margin-top: 8px; }
+  @media (max-width: 700px) { footer .srcs { columns: 1; } }
+  footer .srcs div { break-inside: avoid; margin-bottom: 3px; }
+
+  @media print {
+    body { background: #fff; }
+    header { background: #000D25 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .statband { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table { min-width: 0; font-size: 10px; }
+    th { position: static; }
+    section { margin-top: 32px; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+  <div class="brand">
+    <img src="data:image/png;base64,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" width="32" height="32" style="vertical-align:middle;" alt="Twilio">
+    <span class="wordmark">twilio</span>
+  </div>
+  <div class="eyebrow">Internal · Voice presentation-number landscape · Research 2026-08-04 · Not customer-facing</div>
+  <h1>Where a local caller ID stops working.</h1>
+  <p class="thesis">
+    <strong>A growing set of countries block inbound international calls that present one of their own
+    national numbers as the caller ID.</strong> Nine European markets do it today — almost all of them
+    switched on during 2024 — plus three attested outside Europe. The rules do not attach to the number;
+    they attach to the <em>anonymous international gateway</em>. That distinction is the whole game: traffic
+    delivered over an identified in-country route is outside the blocking duty by design, and at least three
+    regulators say so in writing. This page is the lay of the land plus the specific route out of each market.
+  </p>
+  <div class="meta-chips">
+    <span class="chip">12 markets blocking</span>
+    <span class="chip">6 confirmed to instrument text</span>
+    <span class="chip">Europe deep · global tail thin</span>
+    <span class="chip">See open items before quoting</span>
+  </div>
+  </div>
+</header>
+
+<div class="statband">
+  <div class="wrap">
+    <div class="stats" role="list">
+      <div class="stat" role="listitem"><div class="v">12</div><div class="l">Markets that block, drop or strip a national-format CLI arriving over an international gateway</div></div>
+      <div class="stat" role="listitem"><div class="v">6</div><div class="l">Of those confirmed to primary regulatory instrument text, quoted verbatim</div></div>
+      <div class="stat" role="listitem"><div class="v">1</div><div class="l">Architecture that unlocks nearly all of them: a dedicated in-country interconnect</div></div>
+      <div class="stat" role="listitem"><div class="v">2024</div><div class="l">The year the European wave landed — five instruments in a single twelve-month run</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 01 TAKEAWAYS ================= -->
+<section class="wrap" id="takeaways">
+  <div class="sec-head"><span class="k">01</span><h2>The three things that matter</h2></div>
+  <div class="takeaways">
+    <div class="tk">
+      <span class="n">The mechanism</span>
+      <h3>It's the gateway, not the number</h3>
+      <p>Every instrument examined triggers on an interface where the operator <em>cannot identify the caller</em>.
+      Finland defines this explicitly, then says foreign-located call centres may use Finnish CLI over a
+      dedicated route. Same carve-out in Sweden, Belgium, and the pan-European recommendation.</p>
+    </div>
+    <div class="tk">
+      <span class="n">The asymmetry</span>
+      <h3>Geographic is flat, mobile is conditional</h3>
+      <p>Geographic and toll-free CLI get blocked outright. Mobile CLI is usually blocked only
+      <em>after</em> the operator verifies the subscriber isn't roaming. Ireland and Belgium check against live
+      roaming data. This asymmetry propagates from one CEPT recommendation into nearly every national rule.</p>
+    </div>
+    <div class="tk">
+      <span class="n">The trap</span>
+      <h3>Three different remedies, one word</h3>
+      <p>"Blocked" is used loosely for three outcomes with three different symptoms: the call
+      <strong>fails</strong>, the call completes with the caller ID <strong>stripped</strong> (Germany, Austria),
+      or the call completes at a <strong>penalty rate</strong>. Only the first shows up as an ASR drop.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 THE TABLE ================= -->
+<section class="wrap" id="matrix">
+  <div class="sec-head"><span class="k">02</span><h2>Every market, every number type</h2></div>
+  <p class="lede">Sorted by how much you can trust it, not alphabetically. <strong>Evidence</strong> is the honest
+  confidence signal — <span class="ev primary">primary</span> means the regulation itself was read and quoted;
+  <span class="ev vendor">vendor</span> means one commercial page said so and nothing corroborates it. Source
+  links go to the instrument. The workaround column jumps to the specific play for that market.</p>
+
+  <div class="legend">
+    <span class="item"><span class="st block">blocks</span> call fails at the gateway</span>
+    <span class="item"><span class="st strip">cli stripped</span> call completes, caller ID removed</span>
+    <span class="item"><span class="st sur">surcharge</span> completes, penalty rate</span>
+    <span class="item"><span class="st pend">pending</span> adopted, not yet enforceable</span>
+    <span class="item"><span class="st unres">unresolved</span> conflicting or thin evidence</span>
+    <span class="item"><span class="st none">no evidence</span> searched, nothing found</span>
+  </div>
+
+  <div class="tablecard"><div class="scroller"><table>
+    <thead><tr>
+      <th style="width:12%">Market</th>
+      <th style="width:9%">What happens</th>
+      <th style="width:9%">Local / geo</th>
+      <th style="width:9%">Toll-free</th>
+      <th style="width:11%">Mobile</th>
+      <th style="width:10%">In force</th>
+      <th style="width:22%">Instrument &amp; source</th>
+      <th style="width:18%">Workaround</th>
+    </tr></thead>
+    <tbody>
+
+      <tr class="grouphead"><td colspan="8">Confirmed to primary instrument text</td></tr>
+
+      <tr>
+        <td><span class="cap">Finland</span><div class="sub">The strictest of the set</div></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="no">Blocked</td>
+        <td class="no">Blocked<div class="sub">no roaming relief</div></td>
+        <td class="cond">Blocked<div class="sub">unless genuine roaming §7.2.1</div></td>
+        <td>4 May 2026<div class="sub">predecessors from 2022</div></td>
+        <td>Traficom Reg. 28&nbsp;L/2025 §10.4 · <a class="src" href="https://www.traficom.fi/files/media/regulation/M_28_L.pdf">regulation&nbsp;(FI)</a> · <a class="src" href="https://www.traficom.fi/files/media/regulation/M_28_L_EN.pdf">EN</a> · <a class="src" href="https://www.traficom.fi/files/media/file/Exp_EN_M%2028%20L2025%20MPS.pdf">notes</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a><div class="sub">§7.2.2 — explicitly blessed</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Sweden</span><div class="sub">Architectural clone of Finland</div></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="no">Blocked <span class="sub">§5</span></td>
+        <td class="no">Blocked<div class="sub">within §5 scope</div></td>
+        <td class="cond">Blocked <span class="sub">§6</span><div class="sub">roaming check + MSRN exc.</div></td>
+        <td>4 Nov 2024<div class="sub">§6 from 3 Mar 2025</div></td>
+        <td>PTSFS 2024:2 §§5–6 · <a class="src" href="https://pts.se/contentassets/cfac2c323a8547c7ba51434816adbdf0/foreskrifter-om-att-motverka-manipulerade-anropande-telefonnummer-ptsfs2024_2.pdf">PTS regulation</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a><div class="sub">§6 carve-out</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Ireland</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="no">Blocked<div class="sub">incl. malformed</div></td>
+        <td class="na">Unaddressed</td>
+        <td class="cond">Blocked<div class="sub">unless Roamer Check confirms</div></td>
+        <td>Made 28 Mar 2024<div class="sub">+6 months to implement</div></td>
+        <td>ComReg D11/24 &amp; D12/24 · <a class="src" href="https://www.comreg.ie/media/2024/04/ComReg-2424.pdf">ComReg 24/24</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a><div class="sub">088 M2M range exempt</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Belgium</span><div class="sub">Broadest number scope</div></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="no">Blocked</td>
+        <td class="no">Blocked<div class="sub">art. 1,2° covers non-geographic too</div></td>
+        <td class="cond">Blocked<div class="sub">after roaming verification</div></td>
+        <td>1 Sep 2024<div class="sub">art. 1,3° 1 Dec 2024</div></td>
+        <td>KB/AR 12 mei 2024, numac 2024005253 · <a class="src" href="https://www.ejustice.just.fgov.be/eli/besluit/2024/05/12/2024005253/staatsblad">Staatsblad</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a><div class="sub">art. 4 — names our use cases</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Czechia</span><div class="sub">Mobile deliberately excluded</div></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="no">Blocked</td>
+        <td class="no">Blocked<div class="sub">all non-mobile +420</div></td>
+        <td class="yes">Not mandated<div class="sub">left to self-regulation</div></td>
+        <td>1 Jun 2024<div class="sub">blocking 1 Jul 2024</div></td>
+        <td>ČTÚ VO-S/2/04.2024-1 · <a class="src" href="https://ctu.gov.cz/sites/default/files/obsah/stranky/36864/soubory/VOS2_zm%C4%9Bna_spoofing2024.pdf">general authorisation</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-mobile-cli">Mobile CLI viable</a><div class="sub">the only market where it is</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Malta</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="no">Blocked<div class="sub">1X, 2X ranges</div></td>
+        <td class="no">Blocked<div class="sub">8X range</div></td>
+        <td class="cond">MSRN exception only</td>
+        <td>1 Nov 2024</td>
+        <td>MCA Decision MCA/D/24-5278, Decision 1<div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Norway</span><div class="sub">Two separate rules bite</div></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Unaddressed<div class="sub">by the shield</div></td>
+        <td class="na">Unaddressed</td>
+        <td class="no">Blocked<div class="sub">carrier "border control"</div></td>
+        <td>1 Jan 2025<div class="sub">shield live ~9 Dec 2024</div></td>
+        <td>ekomforskriften §9-5 · <a class="src" href="https://lovdata.no/dokument/SF/forskrift/2024-12-20-3410/KAPITTEL_9">Lovdata</a> · <a class="src" href="https://www.nkom.no/english/numbering-resources">Nkom numbering</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-norway">Norway is a special case</a><div class="sub">offshore use banned outright</div></td>
+      </tr>
+
+      <tr class="grouphead"><td colspan="8">Attested by regulator survey — national instrument not retrieved</td></tr>
+
+      <tr>
+        <td><span class="cap">Poland</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Unknown</td>
+        <td>Cullen International survey to BEREC · <a class="src" href="https://www.berec.europa.eu/system/files/2025-10/BoR+(25)+129_Summary+Report+on+the+BEREC+Workshop+on+practical+issues+preventing+number+misuse+and+possible+fraudulent+activities.pdf">BoR (25) 129</a><div class="sub"><span class="ev survey">survey</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a> or <a class="src" href="#wa-whitelist">whitelist</a><div class="sub">assumed — confirm per market</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Spain</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Unknown</td>
+        <td>Cullen / BEREC survey · <a class="src" href="https://www.berec.europa.eu/system/files/2025-10/BoR+(25)+129_Summary+Report+on+the+BEREC+Workshop+on+practical+issues+preventing+number+misuse+and+possible+fraudulent+activities.pdf">BoR (25) 129</a><div class="sub"><span class="ev survey">survey</span></div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a> or <a class="src" href="#wa-whitelist">whitelist</a><div class="sub">assumed — confirm per market</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">United Kingdom</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Unknown</td>
+        <td>Cullen / BEREC survey · <a class="src" href="https://www.berec.europa.eu/system/files/2025-10/BoR+(25)+129_Summary+Report+on+the+BEREC+Workshop+on+practical+issues+preventing+number+misuse+and+possible+fraudulent+activities.pdf">BoR (25) 129</a><div class="sub"><span class="ev survey">survey</span> · Ofcom CLI workstream known</div></td>
+        <td><a class="src" href="#wa-interconnect">In-country interconnect</a> or <a class="src" href="#wa-whitelist">whitelist</a><div class="sub">assumed — confirm per market</div></td>
+      </tr>
+
+      <tr class="grouphead"><td colspan="8">Non-European — carrier-industry attested, status July/August 2023</td></tr>
+
+      <tr>
+        <td><span class="cap">Saudi Arabia</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Unaddressed<div class="sub">mechanism is mobile-only</div></td>
+        <td class="na">Unaddressed</td>
+        <td class="no">Blocked<div class="sub">SS7 ATI roaming check</div></td>
+        <td>Pre-Aug 2023</td>
+        <td>i3Forum CLI Safe Zone Rel. 1.0, Table 1 · <a class="src" href="https://i3forum.org/wp-content/uploads/2024/10/i3Forum_CLI_Safe_Zone_1.0.pdf">i3Forum (Nov 2023)</a><div class="sub"><span class="ev industry">industry</span></div></td>
+        <td><a class="src" href="#wa-foreign-cli">Foreign CLI</a><div class="sub">geographic may still work — verify</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Oman</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Unaddressed</td>
+        <td class="na">Unaddressed</td>
+        <td class="no">Blocked<div class="sub">SS7 SRI-SM roaming check</div></td>
+        <td>Pre-Aug 2023</td>
+        <td>i3Forum Table 1 · <a class="src" href="https://i3forum.org/wp-content/uploads/2024/10/i3Forum_CLI_Safe_Zone_1.0.pdf">i3Forum</a><div class="sub"><span class="ev industry">industry</span></div></td>
+        <td><a class="src" href="#wa-foreign-cli">Foreign CLI</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">China</span></td>
+        <td><span class="st block">blocks</span></td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td class="na">Not broken out</td>
+        <td>Pre-Aug 2023</td>
+        <td>i3Forum Table 1 · <a class="src" href="https://i3forum.org/wp-content/uploads/2024/10/i3Forum_CLI_Safe_Zone_1.0.pdf">i3Forum</a><div class="sub"><span class="ev industry">industry</span> · also on vendor lists</div></td>
+        <td><a class="src" href="#wa-foreign-cli">Foreign CLI</a></td>
+      </tr>
+
+      <tr class="grouphead"><td colspan="8">Caller ID removed — the call still completes</td></tr>
+
+      <tr>
+        <td><span class="cap">Germany</span></td>
+        <td><span class="st strip">cli stripped</span></td>
+        <td class="cond">Suppressed</td>
+        <td class="cond">Suppressed<div class="sub">specific ranges</div></td>
+        <td class="yes">Roaming exempt</td>
+        <td>TKG 2021 in force</td>
+        <td>TKG 2021 §120(4) · <a class="src" href="https://www.gesetze-im-internet.de/tkg_2021/__120.html">Gesetze im Internet</a><div class="sub"><span class="ev primary">primary</span> · i3Forum corroborates "CLI removal"</div></td>
+        <td><a class="src" href="#wa-suppression">Expect stripped CLI</a><div class="sub">not a delivery failure</div></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Austria</span></td>
+        <td><span class="st strip">cli stripped</span></td>
+        <td class="cond">Suppressed<div class="sub">blocking permissive, not required</div></td>
+        <td class="na">Unaddressed</td>
+        <td class="na">Unaddressed</td>
+        <td>21 Dec 2023</td>
+        <td>KEM-V 2009 §5a (RIS)<div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-suppression">Expect stripped CLI</a><div class="sub">carrier may also block</div></td>
+      </tr>
+
+      <tr class="grouphead"><td colspan="8">Adopted but not yet enforceable</td></tr>
+
+      <tr>
+        <td><span class="cap">Colombia</span><div class="sub">Works today</div></td>
+        <td><span class="st pend">pending</span></td>
+        <td class="cond">Will block</td>
+        <td class="cond">Will block<div class="sub">incl. 01800 — no carve-out</div></td>
+        <td class="cond">Will block</td>
+        <td>No fixed date<div class="sub">trigger-dependent</div></td>
+        <td>CRC Res. 8308 of 30 Jul 2026, numeral 2.1.10.7.2.2.1 · <a class="src" href="https://www.crcom.gov.co/es/normatividad/resolucion-8308">CRC</a><div class="sub"><span class="ev primary">primary</span></div></td>
+        <td><a class="src" href="#wa-colombia">Use it now, watch CRC</a></td>
+      </tr>
+
+      <tr class="grouphead"><td colspan="8">Unresolved or thin — do not act on these without confirmation</td></tr>
+
+      <tr>
+        <td><span class="cap">United Arab Emirates</span><div class="sub">Probably the wrong question</div></td>
+        <td><span class="st unres">unresolved</span></td>
+        <td class="na">No instrument found</td>
+        <td class="na">No instrument found</td>
+        <td class="na">No instrument found</td>
+        <td class="na">n/a</td>
+        <td>No TDRA CLI instrument exists publicly. Only affirmative claim is a vendor page · <a class="src" href="https://www.globalcallforwarding.com/blog/calling-middle-east-countries/">GCF</a>. Contradicted by <a class="src" href="https://tdra.gov.ae/-/media/About/regulations-and-ruling/EN/DECISION-Termination-of-Inbound-International-Traffic--26-Dec-2007-pdf.ashx">TDRA 2007 decision</a> (silent on CLI)<div class="sub"><span class="ev vendor">vendor</span></div></td>
+        <td><a class="src" href="#wa-uae">Solve licensing, not CLI</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">France</span></td>
+        <td><span class="st unres">unresolved</span></td>
+        <td class="cond">Interruption on auth failure</td>
+        <td class="na">Unaddressed</td>
+        <td class="na">Unaddressed</td>
+        <td class="na">Unclear</td>
+        <td>CPCE art. L. 44, IV — triggered by authentication failure, not origin + national CLI. Not ticked in the BEREC survey<div class="sub"><span class="ev vendor">unverified</span></div></td>
+        <td><a class="src" href="#wa-open">Needs verification</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Italy</span><div class="sub">Likely moved in 2025</div></td>
+        <td><span class="st unres">unresolved</span></td>
+        <td class="na">Unknown</td>
+        <td class="na">Unknown</td>
+        <td class="na">Unknown</td>
+        <td>2025?</td>
+        <td>AGCOM Regulation 106/25/CONS, surfaced via i3Forum webinar deck Feb 2026. Italy was <em>not</em> ticked in the May 2025 survey<div class="sub"><span class="ev vendor">unverified</span></div></td>
+        <td><a class="src" href="#wa-open">Needs verification</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Greece · Denmark · Cyprus<br>Bulgaria · Hungary<br>Slovakia · Lithuania</span></td>
+        <td><span class="st sur">surcharge</span></td>
+        <td class="cond">Penalty rate</td>
+        <td class="na">Unknown</td>
+        <td class="na">Unknown</td>
+        <td>1 Jul 2025</td>
+        <td>Single vendor blog (Dec 2025). No primary instrument located<div class="sub"><span class="ev vendor">vendor</span></div></td>
+        <td><a class="src" href="#wa-surcharge">Check margins, not ASR</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Singapore · Malaysia<br>Taiwan · Australia</span></td>
+        <td><span class="st unres">unresolved</span></td>
+        <td class="na">Unknown</td>
+        <td class="na">Unknown</td>
+        <td class="na">Unknown</td>
+        <td class="na">Unknown</td>
+        <td>Named on one vendor blocked-countries list. i3Forum has rows for Australia and Malaysia but the action cell was not captured — a CLI programme exists, blocking is not established<div class="sub"><span class="ev vendor">vendor</span></div></td>
+        <td><a class="src" href="#wa-open">Triage only</a></td>
+      </tr>
+
+      <tr class="grouphead"><td colspan="8">Searched, nothing found</td></tr>
+
+      <tr>
+        <td><span class="cap">Egypt</span><div class="sub">Commonly misfiled as a blocker</div></td>
+        <td><span class="st none">no evidence</span></td>
+        <td class="na">No rule found</td>
+        <td class="na">No rule found</td>
+        <td class="na">No rule found</td>
+        <td class="na">n/a</td>
+        <td>NTRA's 2024–25 programme regulates Egyptian <em>mobile lines</em> for domestic telemarketing — CNAM name display and handset barring inside Egypt. Zero mentions of international gateways or spoofing across all five official releases · <a class="src" href="https://www.tra.gov.eg/ar/%D8%A7%D9%84%D8%AC%D9%87%D8%A7%D8%B2-%D8%A7%D9%84%D9%82%D9%88%D9%85%D9%8A-%D9%84%D8%AA%D9%86%D8%B8%D9%8A%D9%85-%D8%A7%D9%84%D8%A7%D8%AA%D8%B5%D8%A7%D9%84%D8%A7%D8%AA-%D9%8A%D9%82%D8%B1-%D8%A7%D9%84-3/">NTRA 21 Jul 2024</a><div class="sub"><span class="ev primary">primary</span> · confident negative</div></td>
+        <td><a class="src" href="#wa-egypt">No restriction to work around</a></td>
+      </tr>
+
+      <tr>
+        <td><span class="cap">Denmark · Netherlands<br>Portugal · Slovakia<br>Switzerland</span></td>
+        <td><span class="st none">no evidence</span></td>
+        <td class="na">—</td>
+        <td class="na">—</td>
+        <td class="na">—</td>
+        <td class="na">—</td>
+        <td>Portugal and Slovakia explicitly <em>not ticked</em> in the BEREC survey. Switzerland's FMG/FDV/AEFV was read: blocking language is permissive and aimed at spam. Denmark and Netherlands simply not located<div class="sub"><span class="ev survey">survey</span> · absence ≠ proof</div></td>
+        <td><a class="src" href="#wa-open">Not located, not cleared</a></td>
+      </tr>
+
+    </tbody>
+  </table></div></div>
+</section>
+
+<!-- ================= 03 WORKAROUNDS ================= -->
+<section class="wrap" id="workarounds">
+  <div class="sec-head"><span class="k">03</span><h2>What to do about it, market by market</h2></div>
+  <p class="lede">One architecture covers most of the list. The rest are exceptions worth knowing because they
+  fail in unintuitive ways — a number type that's banned regardless of origin, a rule that punishes an empty
+  CLI, a market where the constraint isn't a CLI rule at all.</p>
+
+  <div class="wa primary-wa" id="wa-interconnect">
+    <span class="tag">Play 01 · The main one</span>
+    <h3>Dedicated in-country interconnect</h3>
+    <p class="applies"><b>Applies to:</b> Finland · Sweden · Ireland · Belgium · Malta · and presumptively Poland, Spain, UK</p>
+    <span class="verdict works">Sanctioned in writing</span>
+    <p>These rules do not attach to the number. They attach to an interface defined by the operator's
+      <strong>inability to identify the caller</strong>. Deliver the same traffic over a route where the
+      subscriber is identifiable and their right to use the number is verifiable, and the blocking duty
+      does not apply — not as a loophole, but by the definition in the regulation.</p>
+    <blockquote>
+      "<strong>public international interface</strong> means an interface through which a telecommunications
+      operator receives terminating interconnection traffic from different originating networks
+      <strong>without being able to identify the calling party subscription or the originating network</strong>"
+      <span class="cite">Traficom Regulation 28 L/2025, §2(10) — the trigger</span>
+    </blockquote>
+    <blockquote>
+      "when traffic is directed to Finland so that the subscriber using a Finnish telephone number can be
+      identified and the subscriber's right to use the telephone number can be verified in accordance with
+      sections 10.1 and 10.2"
+      <span class="cite">§7.2.2 — the exception</span>
+    </blockquote>
+    <blockquote>
+      "In this context, <strong>it is irrelevant whether the customer is physically located in Finland or
+      abroad</strong>… Thus, for example, <strong>corporate switchboards and call centres may be physically
+      located abroad and still use Finnish telephone numbers</strong> as long as the traffic is directed to
+      Finland via a dedicated traffic route so that a customer or telecommunications operator using Finnish
+      numbers can be identified and the telecommunications operator of the originating network can comply
+      with Regulation 28."
+      <span class="cite">Traficom explanatory memorandum — the regulator describing our exact use case</span>
+    </blockquote>
+    <p>The same carve-out, in the same shape, elsewhere:</p>
+    <ul>
+      <li><strong>Sweden</strong> — PTSFS 2024:2 §6 exempts cases "där trafiken kan föras till Sverige på ett sätt
+        som gör att samtalet inte kommer in till Sverige via ett internationellt samtrafikgränssnitt."</li>
+      <li><strong>Belgium</strong> — KB art. 4 names nomadic, cloud conferencing, customer-support and
+        direct-marketing calls delivered "via een speciale interface" under the originating operator's full control.</li>
+      <li><strong>CEPT</strong> — <a class="src" href="https://docdb.cept.org/download/4402">ECC/REC/(23)03</a>
+        names exactly two sanctioned remedies for cloud providers: a per-number whitelist, or a dedicated
+        in-country SIP/trunk interface. It notes the second brings the provider under the national regulator
+        (EECC Art. 97(2)).</li>
+    </ul>
+    <p><strong>The cost:</strong> in-country regulatory exposure, and per-market build. That is the trade — and
+      it is the one the regulators intend you to make.</p>
+  </div>
+
+  <div class="wa" id="wa-whitelist">
+    <span class="tag">Play 02</span>
+    <h3>Per-number CLI whitelist or registration</h3>
+    <p class="applies"><b>Applies to:</b> anywhere the terminating carrier or regulator operates one — confirm per market</p>
+    <span class="verdict partial">Lower lift, patchy availability</span>
+    <p>ECC/REC/(23)03's first named remedy: register the specific national numbers permitted as CLI over
+      cloud-based origination. Cheaper than an interconnect and doesn't change routing, but availability is
+      inconsistent and per-number lead times are real. Worth asking carrier relations before assuming an
+      interconnect build is the only path.</p>
+  </div>
+
+  <div class="wa" id="wa-mobile-cli">
+    <span class="tag">Play 03</span>
+    <h3>Mobile CLI where geographic is blocked</h3>
+    <p class="applies"><b>Applies to:</b> Czechia — and essentially nowhere else</p>
+    <span class="verdict partial">One market only</span>
+    <p>Czechia's ČTÚ mandate covers non-mobile +420 CLI only; mobile was deliberately left to
+      self-regulation. That makes a Czech mobile presentation number a genuine option where a geographic one
+      fails.</p>
+    <p><strong>Do not generalise this.</strong> Everywhere else, mobile CLI is blocked
+      <em>conditionally</em> — permitted only after the terminating operator verifies the subscriber is
+      actually roaming. Ireland checks against its Roamer Check facility, Belgium requires verification under
+      art. 1,3°, Saudi Arabia and Oman use SS7 roaming queries. Genuine roaming is not a business
+      architecture, so this is not a workaround in those markets.</p>
+  </div>
+
+  <div class="wa" id="wa-norway">
+    <span class="tag">Play 04 · Special case</span>
+    <h3>Norway: two rules, one of them absolute</h3>
+    <p class="applies"><b>Applies to:</b> Norway</p>
+    <span class="verdict nogo">No workaround for offshore operations</span>
+    <p>Norway's blocking rule is mobile-scoped and textually unusual —
+      <strong>ekomforskriften §9-5</strong> keys on absence of a right to use the A-number rather than on the
+      international interface. Carriers (Telenor, Telia, Ice, with NRDB) run a coordinated inbound
+      "grensekontroll" on mobile traffic from abroad.</p>
+    <p>But two <em>separate</em> Nkom numbering rules bite regardless of any CLI regime, and these are the ones
+      that actually kill the use case:</p>
+    <ul>
+      <li>Call centres <strong>may not use 8-digit Norwegian mobile numbers</strong> as outbound presentation
+        numbers at all. Fixed or special numbers only.</li>
+      <li>"It is not permitted for e.g., customer centres or call centres to use Norwegian numbers,
+        <strong>if the business is located abroad</strong>."</li>
+    </ul>
+    <p>The second is a flat prohibition on the offshore pattern, independent of how the traffic is delivered.
+      An in-country interconnect does not cure it. Source:
+      <a class="src" href="https://www.nkom.no/english/numbering-resources">Nkom numbering resources</a>.</p>
+  </div>
+
+  <div class="wa" id="wa-suppression">
+    <span class="tag">Play 05</span>
+    <h3>Germany and Austria: expect a stripped CLI, not a failure</h3>
+    <p class="applies"><b>Applies to:</b> Germany · Austria</p>
+    <span class="verdict partial">Calls complete — caller ID does not</span>
+    <p>Both mandate <em>suppression</em> rather than blocking. The call connects; the recipient sees no number.
+      This will not appear as an ASR drop, so it's easy to miss in monitoring while quietly destroying answer
+      rates and callback ability.</p>
+    <p>Germany, TKG 2021 §120(4): "…die Rufnummernanzeige ist zu unterdrücken. Ausgenommen von Satz 1 ist das
+      internationale Roaming im Mobilfunk." Austria's KEM-V §5a makes suppression mandatory and blocking
+      <em>permissive</em> — so an Austrian carrier may additionally choose to drop the call.</p>
+    <p><strong>One live trap:</strong> i3Forum warns that suppression upstream can trigger blocking downstream —
+      "such calls may fail if the regulations in the receiving country B require that incoming international
+      calls must be blocked with an empty CLI field." Verify per market before defaulting to a withheld CLI.</p>
+  </div>
+
+  <div class="wa" id="wa-foreign-cli">
+    <span class="tag">Play 06 · Always available</span>
+    <h3>Present a foreign CLI</h3>
+    <p class="applies"><b>Applies to:</b> every market on this page</p>
+    <span class="verdict works">Always survives</span>
+    <p>A non-national presentation number is what these rules are built to permit. It survives everywhere and
+      needs no registration or interconnect. The cost is the entire reason customers wanted a local number:
+      local-presence answer rates.</p>
+    <p>For <strong>Saudi Arabia</strong>, <strong>Oman</strong> and <strong>China</strong> this is the safe default
+      today. Note their attested mechanism is a <em>mobile</em> roaming check, so geographic CLI may still be
+      viable — but that is unverified and worth a carrier question rather than an assumption.</p>
+  </div>
+
+  <div class="wa" id="wa-surcharge">
+    <span class="tag">Play 07</span>
+    <h3>Surcharge markets: check margin, not delivery</h3>
+    <p class="applies"><b>Applies to:</b> Greece, Denmark, Cyprus, Bulgaria, Hungary, Slovakia, Lithuania (low confidence)</p>
+    <span class="verdict partial">Silent cost, not a failure</span>
+    <p>A single vendor source reports a penalty surcharge rather than blocking from 1 July 2025. No primary
+      instrument was located, so treat the country list as unconfirmed — but the <em>failure mode</em> is worth
+      acting on regardless, because a surcharge shows up as eroded margin on successful calls and will never
+      appear in delivery metrics. Cheap to check against rate decks.</p>
+  </div>
+
+  <div class="wa" id="wa-colombia">
+    <span class="tag">Play 08</span>
+    <h3>Colombia: use it now, watch for the trigger</h3>
+    <p class="applies"><b>Applies to:</b> Colombia</p>
+    <span class="verdict works">Unrestricted today</span>
+    <p>CRC Resolución 8308 (30 July 2026) adds the blocking mandate but it is <strong>not yet
+      exigible</strong>. Commencement is not a calendar date — it triggers three months after a
+      <em>later</em> CRC resolution adopting the CTLFSM committee's recommendation on international roaming
+      traffic, which has not issued.</p>
+    <p>When it does bite, scope is unusually broad: the <strong>entire</strong> Plan Nacional de Numeración with
+      no carve-out by number type, so geographic, mobile and 01800 toll-free all fall in together. The same
+      numeral binds international carriers to E.164 formats and to respect the true origin country code,
+      foreclosing A-number refile.</p>
+    <p><strong>Action:</strong> Colombian local CLI is fine today. Put a watch on CRC publications for the
+      triggering resolution, and treat the three-month clock as your migration window.</p>
+  </div>
+
+  <div class="wa" id="wa-uae">
+    <span class="tag">Play 09 · Reframe</span>
+    <h3>UAE: the constraint probably isn't CLI</h3>
+    <p class="applies"><b>Applies to:</b> United Arab Emirates</p>
+    <span class="verdict partial">Ask a different question</span>
+    <p>No TDRA CLI instrument exists publicly. The regulations index has categories for Numbering,
+      Interconnection, VOIP and Spam with no documents under them. The 2007 inbound-international-traffic
+      decision never mentions caller ID. The only caller-ID item in TDRA's entire sitemap is a 2022 press
+      release about Kashif — CNAP <em>name display</em> — and e&amp;'s own page says it "only works while in the
+      UAE." i3Forum's per-country table has no UAE row.</p>
+    <p>What the vendor evidence actually shows is a <strong>number availability and licensing</strong>
+      constraint: UAE local, mobile, national and shared-cost numbers listed as unavailable by some providers;
+      toll-free gated on a Letter of Intent; two-way service gated on a <strong>UAE Trade License</strong>.
+      Meanwhile several providers do sell two-way service presenting a +971 CLI. What differs between them is
+      where the call originates and whether the customer holds a UAE licence — not whether the gateway
+      rewrites CLI.</p>
+    <p><strong>Action:</strong> resolve this by asking whether a licensed in-country entity exists, and by
+      putting the question to e&amp;/du wholesale directly. Do not go looking for a CLI regulation.</p>
+  </div>
+
+  <div class="wa" id="wa-egypt">
+    <span class="tag">Play 10 · Non-issue</span>
+    <h3>Egypt: nothing to work around</h3>
+    <p class="applies"><b>Applies to:</b> Egypt</p>
+    <span class="verdict works">No restriction found</span>
+    <p>Egypt appears on informal blocker lists but the evidence does not support it. NTRA's 2024–25 programme
+      regulates <strong>Egyptian mobile lines used for domestic telemarketing</strong>: register your numbers
+      with the Egyptian operators, consumers then see the calling entity's name or an "NTRA Alert" label. The
+      mechanism is CNAM. Enforcement has been against Egypt-established real-estate developers. May 2025
+      extended it to landline and added IMEI-level handset barring <em>inside Egypt</em>.</p>
+    <p>Across fourteen documents including all five official NTRA releases, there are <strong>zero
+      mentions</strong> of inbound international calls, the international gateway, caller-ID spoofing, calls
+      from abroad presenting a +20 number, or any operator duty to filter international traffic. The only
+      "blocking" is of Egyptian subscribers and handsets.</p>
+    <p><strong>Two caveats.</strong> Late-2025 Egyptian "unknown numbers / caller-name" initiatives were not
+      fetched — if inbound-international CLI is addressed anywhere, that later track is where to look. And
+      regional phrasing in industry commentary ("Europe, India and the Middle East") names no Middle East
+      country; the only named MENA entries anywhere are Saudi Arabia and Oman. Do not read regional language
+      as covering Egypt.</p>
+  </div>
+
+  <div class="wa" id="wa-open">
+    <span class="tag">Play 11</span>
+    <h3>Unverified markets: verify before advising</h3>
+    <p class="applies"><b>Applies to:</b> France · Italy · Singapore · Malaysia · Taiwan · Australia · Denmark · Netherlands</p>
+    <span class="verdict nogo">No position yet</span>
+    <p>These are on the page so they aren't silently omitted, not because there's a recommendation attached.
+      France's CPCE art. L. 44 IV mandates interruption but on authentication failure rather than
+      origin-plus-national-CLI, and France was not ticked in the BEREC survey. Italy's AGCOM 106/25/CONS
+      surfaced only via a webinar deck. The APAC entries rest on one vendor list. Denmark and the Netherlands
+      were never located — which is not the same as cleared.</p>
+    <p>For any of these, the honest customer answer is "we don't know yet, and here's how we'd find out" —
+      see the open items below.</p>
+  </div>
+</section>
+
+<!-- ================= 04 HOW THE RULES ARE BUILT ================= -->
+<section class="wrap" id="template">
+  <div class="sec-head"><span class="k">04</span><h2>Why these rules all look the same</h2></div>
+  <p class="lede">The 2024 European wave isn't a coincidence. It traces to one CEPT recommendation, which is
+  why the same asymmetry and the same carve-outs keep reappearing in different languages.</p>
+
+  <div class="wa">
+    <span class="tag">The source pattern</span>
+    <h3>ECC/REC/(23)03 — approved 28 November 2023</h3>
+    <blockquote>
+      "in general, it cannot be justified that calls originating from abroad can be associated with national
+      fixed/geographic numbers."
+      <span class="cite">The rationale</span>
+    </blockquote>
+    <blockquote>
+      "for national geographic/fixed E.164 numbers: to preferably <strong>block</strong> incoming international
+      voice calls, or at least to <strong>suppress the CLI</strong>… except in justified cases."
+      <br><br>
+      "for national mobile E.164 numbers: to preferably block… or at least to suppress the CLI…
+      <strong>after checking and verifying that the user is not roaming abroad</strong>, except in justified cases."
+      <span class="cite">The operative asymmetry — <a class="src" href="https://docdb.cept.org/download/4402">docdb.cept.org/download/4402</a></span>
+    </blockquote>
+    <p>Geographic flat-blocked, mobile conditional on roaming state. That single distinction propagates into
+      nearly every national instrument in the table above, and it is why mobile CLI behaves differently from
+      geographic almost everywhere.</p>
+    <p><strong>Scope limit worth remembering:</strong> CEPT has 46 European members. This instrument does not
+      reach MENA, APAC or the Americas — so it explains the European cluster and tells you nothing about
+      Egypt, the Gulf, or Latin America.</p>
+    <p>The wholesale industry's own norm cuts in our favour, and names our exposure directly. From i3Forum:
+      "Transit and terminating operators <strong>must not alter CLI Data</strong>" — and "CLI removal policies
+      can impact <strong>legitimate Enterprise DID and Call Center traffic</strong> due to the removal or
+      blocking of domestic non-mobile CLI found in these international calls."</p>
+  </div>
+</section>
+
+<!-- ================= 05 OPEN ITEMS ================= -->
+<section class="wrap" id="open-items">
+  <div class="sec-head"><span class="k">05</span><h2>Open items</h2></div>
+  <p class="lede">What this page does not establish, and the cheapest ways to close each gap. Read this before
+  quoting any row to a customer.</p>
+
+  <div class="oi">
+    <div class="flag">
+      <h3>Read these two sources first</h3>
+      <ul>
+        <li><strong>Our own support article</strong> —
+          <span class="mono">help.twilio.com/articles/223132227-Local-Caller-ID-CLI-international-compatibility</span>.
+          Exactly on point. JS-rendered and Wayback was unavailable, so no agent could read it. Internal access
+          almost certainly beats this entire page.</li>
+        <li><span class="mono">hivoox.com/national-caller-id-restrictions-for-certain-countries</span> — on-point
+          title, possibly broader than Europe. Cloudflare 403 across every fetch method tried.</li>
+      </ul>
+    </div>
+
+    <div class="flag">
+      <h3>The method caveat that bounds everything</h3>
+      <ul>
+        <li><strong>Web search was unavailable for this entire research run.</strong> Every finding came from
+          direct URL fetches, sitemap scans, Wayback CDX and DuckDuckGo-lite via curl POST.</li>
+        <li>That makes the country list a <strong>floor, not a census</strong>. Markets absent from this page
+          were mostly never searched, not cleared.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Never researched</h3>
+      <ul>
+        <li>LATAM beyond Colombia</li>
+        <li>GCC beyond Saudi Arabia, Oman, UAE; Levant; North Africa</li>
+        <li>Sub-Saharan Africa</li>
+        <li>Most of APAC; Central Asia</li>
+        <li>US and Canada</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Searched, not found — absence is not proof</h3>
+      <ul>
+        <li><strong>Denmark, Netherlands</strong> — not located</li>
+        <li><strong>Portugal, Slovakia</strong> — explicitly not ticked in the BEREC survey</li>
+        <li><strong>Switzerland</strong> — FMG/FDV/AEFV read; blocking language is permissive and aimed at spam,
+          so the premise appears not to hold</li>
+        <li>No official ECC/REC/(23)03 national-implementation status table exists publicly</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Questions for carrier relations</h3>
+      <ul>
+        <li>Per Tier 1 market: does the terminating carrier offer a <strong>CLI whitelist</strong>, and what is
+          the per-number lead time?</li>
+        <li>Where we already have in-country interconnect, does our path actually satisfy the "identified
+          interface" test — or are we transiting an anonymous gateway and being blocked without knowing?</li>
+        <li>Do we present an <strong>empty CLI</strong> anywhere into a market that blocks empty CLI?</li>
+        <li>Do we detect suppression (DE, AT) distinctly from blocking, and surface the difference?</li>
+        <li>Saudi Arabia and Oman block via mobile roaming checks — does that leave +966/+968
+          <em>geographic</em> CLI viable?</li>
+        <li>Are the 1 July 2025 surcharge markets hitting margin unnoticed?</li>
+        <li>UAE: CLI rule, or licensing prohibition plus number unavailability? Ask e&amp;/du wholesale.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Document hygiene traps</h3>
+      <ul>
+        <li>Traficom <strong>overwrites the same PDF filename</strong> on each revision, so superseded versions
+          vanish; its landing page also shows a stale "Valid from: 09/11/2023". Trust the PDF header block.</li>
+        <li>Finland's English text is headed <strong>"UNOFFICIAL TRANSLATION"</strong> on every page. Cite the
+          Finnish for anything legal.</li>
+        <li>Finland's often-quoted phase-in dates (geographic 1 Jul 2022, mobile 2 Oct 2023) could not be
+          confirmed against the superseded 28 J/2022 and are <strong>moot</strong> — the current 28 L/2025 has no
+          transitional provisions for call blocking.</li>
+        <li>i3Forum "CLI Safe Zone" is <strong>Release 1.0, November 2023</strong> with table status
+          <strong>July/August 2023</strong>; its WordPress upload path misleadingly reads /2024/10/. Cite both dates.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="caveat">
+    <b>The cheapest validation isn't more desk research.</b> Blocking shows up in CDRs. An ASR comparison on
+    national-CLI traffic into Finland, Sweden, Ireland, Belgium, Czechia, Malta, Poland, Spain and the UK would
+    confirm or refute most of the table above in an afternoon — and would catch the markets this research never
+    reached.
+  </div>
+</section>
+
+<footer class="wrap">
+  <div><b>Sources.</b> Primary regulatory instruments as linked in the table; pan-European framework
+  ECC/REC/(23)03; carrier-industry material from i3Forum; regulator survey via BEREC BoR (25) 129. Vendor pages
+  used only where labelled and never as sole support for a Tier 1 claim.</div>
+  <div class="srcs">
+    <div>traficom.fi — M 28 L/2025 regulation, EN translation, explanatory notes</div>
+    <div>pts.se — PTSFS 2024:2 · comreg.ie — ComReg 24/24 (D11/24, D12/24)</div>
+    <div>ejustice.just.fgov.be — KB 12 mei 2024 · ctu.gov.cz — VO-S/2/04.2024-1</div>
+    <div>lovdata.no — ekomforskriften §9-5 · nkom.no — numbering resources</div>
+    <div>crcom.gov.co — Resolución 8308 de 2026 · gesetze-im-internet.de — TKG §120</div>
+    <div>docdb.cept.org — ECC/REC/(23)03 · berec.europa.eu — BoR (25) 129</div>
+    <div>i3forum.org — CLI Safe Zone Rel. 1.0 · tra.gov.eg — NTRA releases 2024–25</div>
+    <div>Research 2026-08-04 · internal use · verify before customer-facing use</div>
+  </div>
+</footer>
+
+</body>
+</html>
