@@ -135,8 +135,13 @@ its file, and a stray failed upload is inert rather than corrupting.
 Upload endpoints take `multipart/form-data` with fields `Content`, `Path`, `Visibility`. All others
 take `application/x-www-form-urlencoded`.
 
-Builds are created with `Runtime=node22` and no `Dependencies` — the gate function uses only
-built-in `Runtime`, `Twilio.Response`, and `crypto`.
+Builds are created with `Runtime=node22` and one dependency:
+`Dependencies=[{"name":"@twilio/runtime-handler","version":"<pinned>"}]` as a JSON string.
+
+That dependency is mandatory, not optional. `event.request.headers`, `event.request.cookies`, and
+`Response.setCookie()` are only available on `@twilio/runtime-handler` 1.2.0 or later — the gate is
+inoperable without it. Beyond the handler, the gate uses only built-in `Runtime`, `Twilio.Response`,
+and `crypto`.
 
 ## Deploy flow
 
@@ -264,15 +269,23 @@ with `Content-Type: text/html; charset=utf-8`.
 
 ### Cookie scheme
 
-- Value: `HMAC-SHA256(PAGES_COOKIE_SECRET, SHA256(PAGES_PASSWORD))`, hex.
-- Attributes: `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800` (7 days).
+- Name `pages_auth`, value `HMAC-SHA256(PAGES_COOKIE_SECRET, SHA256(PAGES_PASSWORD))`, hex.
+- Set with `response.setCookie('pages_auth', value, ['SameSite=Lax', 'Path=/', 'Max-Age=86400'])`.
+  Runtime adds `HttpOnly` and `Secure` automatically.
+- Read with `event.request.cookies.pages_auth`.
 - Compared with `crypto.timingSafeEqual` on equal-length buffers; the submitted password is compared
   the same way.
 - Rotating `PAGES_PASSWORD` changes the expected HMAC, so **every outstanding cookie is invalidated
   on rotation** — revocation with no redeploy.
 
-Cookies are read by parsing the raw `event.request.headers.cookie` string rather than relying on a
-pre-parsed helper.
+**`Max-Age` is capped at 86400 by the platform, not by choice.** A cookie `Max-Age` or `Expires`
+above 24 hours makes the Function return `400 Cookies max-age cannot be greater than a day`. The
+practical consequence is that the password must be re-entered once a day; there is no longer-lived
+cookie option.
+
+**Request method is not inspected.** A submission is identified by the presence of `event.password`
+rather than by `event.request.method`, which avoids depending on an unverified field. No password
+field present → cookie check; cookie valid → serve; otherwise → form.
 
 ### Form
 
@@ -329,15 +342,19 @@ Fail during execution, with the live site untouched:
 Three behaviors are assumed from documentation but not confirmed. Each is verified by the
 integration deploy, and each has a defined fallback. They are not open questions blocking design.
 
-1. **`Set-Cookie` survives `Twilio.Response.appendHeader`.** Fallback if not: after a correct
-   password, redirect to `/<slug>?t=<hmac>` — the derived token, never the password itself — and
-   accept the token from the query string.
+1. **The `@twilio/runtime-handler` version to pin.** 1.2.0 is the documented floor for cookies, but
+   the version that pairs correctly with `node22` is unconfirmed. Resolve by deploying and reading
+   back the build's dependency list; if `event.request.cookies` is `undefined` at runtime, the pin is
+   wrong. Recorded in `references/serverless-api-notes.md` once known.
 2. **Function response body ceiling.** The largest current page is 73 KB and private assets may be
    10 MB, but the Function response limit is unconfirmed. Measure it; then refuse to gate any page
    above the measured limit with an error suggesting the page stay public.
 3. **Environment domain shape with no `DomainSuffix`.** Expected `pages-<hash>.twil.io`. Whatever it
    resolves to is read back from the Environment resource and recorded in the manifest rather than
    constructed by string concatenation.
+
+Resolved during planning, previously open: `Set-Cookie` is supported through the documented
+`Response.setCookie()` method, so no query-string token fallback is needed.
 
 ## Testing
 
@@ -388,6 +405,10 @@ Integration — one manual deploy to a throwaway `pages-test` service, asserting
     └── serverless-api-notes.md       # endpoints, limits, the snapshot constraint, gotchas
 ```
 
+`~/.claude/skills` is a symlink to `~/code/claude-config/skills`, which is a separate git repo. Files
+are therefore written to `~/code/claude-config/skills/publishing-html-to-twilio-serverless/` and
+committed in the `claude-config` repo — not in `pages`, which holds only this spec and the plan.
+
 Installed in the personal skills directory so it works on any folder of HTML, not only this repo.
 
 `SKILL.md` instructs the operator-facing flow: ask scope (all vs one file) before running, surface
@@ -405,3 +426,6 @@ it.
 | Build statuses | `building` → `completed` \| `failed` |
 | Build poll interval | 1s, capped at 120s |
 | Runtime | `node22` |
+| Cookie `Max-Age` ceiling | 86400 (24h); above it the Function returns `400` |
+| Response headers + cookies | 15 KB, 90 headers max; above it a `431` |
+| Methods reachable | `GET`, `POST`, `OPTIONS` (`OPTIONS` auto-handled by Runtime) |
