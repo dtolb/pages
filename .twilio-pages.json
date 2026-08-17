@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "serviceSid": "ZS9e2fc833e983756797cbbfe31fb7c12b",
+  "serviceUniqueName": "pages",
+  "environmentSid": "ZE079f2c9ef388f8516ce784ada1656df4",
+  "domain": "pages-4296.twil.io",
+  "pages": {
+    "aci-on-demand": {
+      "file": "aci-on-demand.html",
+      "title": "Enabling Advanced Call Insights on demand",
+      "sha256": "8ba77ba5427fffdce8dc120324d2c52d85fe07cff41e90a6e22f0aef30844b86",
+      "updatedAt": "2026-08-05T18:23:20.312Z"
+    },
+    "agent-connect-implementation-guide": {
+      "file": "Agent-Connect-Implementation-Guide.html",
+      "title": "Agent Connect — Implementation Guide",
+      "sha256": "b133d384566fdeb8d4cbdad0d4dd7489145a9ecfbdc32485752f102cb04935fc",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    },
+    "call-quality-escalation": {
+      "file": "call-quality-escalation.html",
+      "title": "Call-Quality Detection & ACI Escalation — Reference",
+      "sha256": "badd194a0d98a9f9180d2b693e1a8319d71d24e89c9d3f222c91309e6ed97226",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    },
+    "cli-blocking-landscape": {
+      "file": "cli-blocking-landscape.html",
+      "title": "Local caller ID into international destinations — where it breaks",
+      "sha256": "e149ffff8b10cbd2aa12645bf7be38f9748a05ebec3d9bf47c40d63962b1bcf1",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    },
+    "conversation-design": {
+      "file": "conversation-design.html",
+      "title": "Account Consolidation Concierge — Conversation Design",
+      "sha256": "3e98c523633a9d00135ef6bf4bd3d0f996dc7875c66a88331a8725ac07d031ab",
+      "updatedAt": "2026-08-04T19:14:46.413Z"
+    },
+    "conversations-enablement-overview": {
+      "file": "conversations-enablement-overview.html",
+      "title": "Flight School — SE Enablement",
+      "sha256": "91baae408469187a033f798910bd679823bfd92895877aee4f0444bdcd85f390",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    },
+    "convo-vs-livekit": {
+      "file": "convo-vs-livekit.html",
+      "title": "Delta Assist — Twilio Agent Connect vs. LiveKit replatform",
+      "sha256": "0efb75c570d4b4dbc4759de6993307ebc3e269944f4c21ee95d1e27d3f22bdfb",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    },
+    "outbound-ai-lead-flow": {
+      "file": "outbound-ai-lead-flow.html",
+      "title": "Outbound AI Lead Qualification — Architecture",
+      "sha256": "c6618b0fc6f6539470562e27842fdd81cb8f3ad1989ffabf579c4a060978da5b",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    },
+    "tac-payment-reminder-walkthrough": {
+      "file": "tac-payment-reminder-walkthrough.html",
+      "title": "TAC Payment Reminder — Walkthrough",
+      "sha256": "e4958d99c8005304db458a54d6bf687e7ee216301210bba871aa3dcd5ace0f58",
+      "updatedAt": "2026-08-12T18:15:19.080Z"
+    },
+    "utah-trip-site": {
+      "file": "utah-trip-site.html",
+      "title": "Dan & Liz — Utah, Oct 10–18 2026",
+      "sha256": "11423ed7a60a17f07dce76b2cad9e9b30eb5a34780a44b614678a2b1533f0a23",
+      "updatedAt": "2026-08-04T19:13:57.874Z"
+    }
+  }
+}

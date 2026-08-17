@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAC Payment Reminder — Walkthrough</title>
+<style>
+  :root{
+    --field:#ECF1F3;
+    --paper:#FFFFFF;
+    --ink:#14283A;
+    --muted:#5A6B7A;
+    --line:#C6D2D9;
+
+    /* systems */
+    --twilio:#EF223A;
+    --llm:#5B4BD1;
+    --know:#1F9E7A;
+    --sms:#E8703A;
+    --browser:#2E6FA3;
+    --backend:#4D5777;
+
+    --ok:#2E7D5B;
+    --no:#C05A5A;
+
+    --display:"Avenir Next","Futura","Century Gothic","Trebuchet MS",sans-serif;
+    --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--field);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:16px;line-height:1.55;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 79px, rgba(46,111,163,.06) 79px 80px),
+      repeating-linear-gradient(90deg, transparent 0 79px, rgba(46,111,163,.06) 79px 80px);
+    padding-bottom:72px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+
+  /* ---------- hero ---------- */
+  header{padding:56px 0 8px}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    color:var(--twilio);text-transform:uppercase;
+  }
+  h1{
+    font-family:var(--display);font-weight:600;
+    font-size:clamp(38px,6vw,60px);letter-spacing:-.02em;line-height:1.05;
+    margin:10px 0 14px;
+  }
+  .thesis{max-width:660px;color:var(--muted);font-size:18px}
+  .thesis strong{color:var(--ink);font-weight:600}
+
+  /* ---------- systems legend ---------- */
+  .tracks{display:flex;flex-wrap:wrap;gap:10px 22px;margin:26px 0 8px}
+  .track{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;letter-spacing:.04em}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.twilio{background:var(--twilio)}
+  .dot.llm{background:var(--llm)}
+  .dot.know{background:var(--know)}
+  .dot.sms{background:var(--sms)}
+  .dot.browser{background:var(--browser)}
+  .dot.backend{background:var(--backend)}
+  .legend-note{font-size:13px;color:var(--muted);margin-top:8px}
+  .legend-note strong{color:var(--ink);font-weight:600}
+
+  /* ---------- flow ---------- */
+  .flow{margin:44px 0 0}
+  .phase{margin:0 auto}
+  .phase-label{
+    font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);text-align:center;margin:0 0 16px;
+  }
+  .phase-label b{color:var(--ink);font-weight:600}
+
+  .band{display:flex;justify-content:center;align-items:stretch;gap:0;flex-wrap:nowrap}
+
+  .node{
+    position:relative;background:var(--paper);border:1px solid var(--line);
+    padding:16px 16px 15px;flex:1 1 0;min-width:176px;max-width:250px;
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--line))}
+  .node .top{display:flex;align-items:center;gap:8px}
+  .node .num{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.14em}
+  .node h3{font-family:var(--display);font-size:16.5px;font-weight:600;letter-spacing:-.01em}
+  .node p{font-size:13px;color:var(--muted);line-height:1.5}
+  .node code{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--field);padding:1px 4px;border-radius:2px}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:4px}
+  .tag{
+    --c:var(--muted);
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+    padding:2px 7px;border-radius:2px;border:1px solid var(--c);color:var(--c);line-height:1.5;
+    white-space:nowrap;
+  }
+  .tag.twilio{--c:var(--twilio)}
+  .tag.llm{--c:var(--llm)}
+  .tag.know{--c:var(--know)}
+  .tag.sms{--c:var(--sms)}
+  .tag.browser{--c:var(--browser)}
+  .tag.backend{--c:var(--backend)}
+  a.tag{text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+  a.tag::after{content:"\2197";margin-left:3px;font-size:8.5px;opacity:.55}
+  a.tag:hover{background:var(--c);color:#fff}
+  a.tag:hover::after{opacity:1}
+  a.tag:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+
+  .node.decision{background:#FBFCFD;border-style:dashed;justify-content:center;text-align:center}
+  .node.decision::before{background:var(--ink)}
+  .node.decision .diamond{display:inline-block;color:var(--ink);font-size:13px;transform:translateY(1px);margin-right:4px}
+  .pivot{max-width:250px;margin:0 auto}
+
+  /* ---------- connectors ---------- */
+  .h-arrow{flex:0 0 40px;align-self:center;height:2px;background:var(--line);position:relative;margin:0 3px}
+  .h-arrow::after{
+    content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);
+    width:0;height:0;border-left:8px solid var(--line);
+    border-top:5px solid transparent;border-bottom:5px solid transparent;
+  }
+  .v-arrow{width:2px;height:30px;background:var(--line);position:relative;margin:10px auto}
+  .v-arrow::after{
+    content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+    width:0;height:0;border-top:8px solid var(--line);
+    border-left:5px solid transparent;border-right:5px solid transparent;
+  }
+  .v-arrow.ok{background:var(--ok)} .v-arrow.ok::after{border-top-color:var(--ok)}
+  .v-arrow.no{background:var(--no)} .v-arrow.no::after{border-top-color:var(--no)}
+  .v-arrow.ask{background:var(--know)} .v-arrow.ask::after{border-top-color:var(--know)}
+  .v-arrow.hum{background:var(--browser)} .v-arrow.hum::after{border-top-color:var(--browser)}
+  .v-arrow.llm{background:var(--llm)} .v-arrow.llm::after{border-top-color:var(--llm)}
+
+  /* ---------- fork ---------- */
+  .fork{display:flex;justify-content:center;align-items:flex-start;gap:56px;margin:4px 0 2px;flex-wrap:wrap}
+  .prong{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .plabel{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+  .plabel.ask{color:var(--know)}
+  .plabel.yes{color:var(--ok)}
+  .plabel.hum{color:var(--browser)}
+  .plabel.no{color:var(--no)}
+  .plabel.llm{color:var(--llm)}
+  .terminal{
+    max-width:250px;text-align:center;font-size:12.5px;color:var(--muted);
+    border:1px dashed var(--line);border-radius:4px;padding:9px 13px;background:var(--paper);
+  }
+
+  /* ---------- section shell ---------- */
+  .sec{margin:52px 0 0;border-top:1px solid var(--line);padding-top:30px}
+  .sec > h3{font-family:var(--display);font-size:20px;font-weight:600;margin-bottom:4px}
+  .sec > .sub{color:var(--muted);font-size:14px;margin-bottom:22px;max-width:720px}
+  .sec > .sub strong{color:var(--ink);font-weight:600}
+  .sec code{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--field);padding:1px 4px;border-radius:2px}
+
+  /* ---------- code ---------- */
+  .code{
+    background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--llm);
+    padding:14px 16px;margin:0 0 22px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.5px;line-height:1.75;color:var(--ink);white-space:pre;
+  }
+  .code .c{color:var(--muted)}
+  .code .s{color:var(--know)}
+  .code em{font-style:normal;color:var(--twilio);font-weight:600}
+
+  /* ---------- tables ---------- */
+  .matrix{width:100%;border-collapse:collapse;margin:0 0 10px;font-size:13.5px}
+  .matrix th,.matrix td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  .matrix th{
+    background:#FBFCFD;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink);font-weight:600;
+  }
+  .matrix td{color:var(--muted)}
+  .matrix td strong{color:var(--ink);font-weight:600}
+  .matrix code{font-family:var(--mono);font-size:12px;background:var(--field);padding:1px 4px;border-radius:2px;color:var(--ink)}
+  .matrix tr td:first-child{white-space:nowrap}
+  .matrix.wrap1 tr td:first-child{white-space:normal}
+
+  /* ---------- gantt ---------- */
+  .gantt{display:flex;gap:16px;margin-top:8px}
+  .gcol-labels{display:flex;flex-direction:column;gap:12px;flex:0 0 116px;padding-top:1px}
+  .gcol-labels .who{
+    height:22px;display:flex;align-items:center;justify-content:flex-end;
+    font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--ink);text-align:right;
+  }
+  .gcol-plot{position:relative;flex:1 1 auto;display:flex;flex-direction:column;gap:12px}
+  .gcol-plot .trackbar{position:relative;height:22px;background:var(--field);border:1px solid var(--line);border-radius:3px}
+  .gcol-plot .bar{
+    position:absolute;top:-1px;height:22px;border-radius:3px;
+    display:flex;align-items:center;padding:0 9px;color:#fff;
+    font-family:var(--mono);font-size:10px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;
+  }
+  .bar.cust{background:var(--ink)}
+  .bar.ai{background:var(--twilio)}
+  .bar.human{background:var(--browser)}
+  .gcol-plot .marker{position:absolute;top:-8px;bottom:-8px;left:64%;width:0;border-left:1.5px dashed var(--ok);z-index:3}
+  .gcol-plot .marker .mlabel{
+    position:absolute;top:-16px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ok);
+  }
+  .note{margin-top:16px;font-size:13.5px;color:var(--muted);max-width:720px}
+  .note strong{color:var(--ink);font-weight:600}
+  .note code{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--field);padding:1px 4px;border-radius:2px}
+
+  /* ---------- docs ---------- */
+  .docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 44px}
+  .docs h4{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px;
+  }
+  .docs ul{list-style:none}
+  .docs li{margin-bottom:12px;line-height:1.4}
+  .docs a{
+    color:var(--ink);text-decoration:none;font-size:14.5px;
+    border-bottom:1px solid var(--line);padding-bottom:1px;transition:color .15s,border-color .15s;
+  }
+  .col-twilio a:hover{color:var(--twilio);border-color:var(--twilio)}
+  .col-build a:hover{color:var(--llm);border-color:var(--llm)}
+  .docs .desc{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;border:none}
+  .docs .plain{font-size:14.5px;color:var(--ink);font-family:var(--mono)}
+
+  /* ---------- mobile ---------- */
+  @media (max-width:760px){
+    .band{flex-direction:column;align-items:center;gap:0}
+    .node{max-width:360px;width:100%}
+    .h-arrow{transform:rotate(90deg);margin:10px 0}
+    .fork{gap:16px}
+    .docs-grid{grid-template-columns:1fr;gap:24px}
+    .gcol-labels{flex-basis:90px}
+    .gcol-plot .bar{font-size:9px;padding:0 6px}
+    .code{font-size:11px}
+    .matrix,.matrix th,.matrix td{font-size:12.5px}
+    .matrix tr td:first-child{white-space:normal}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Build Walkthrough &middot; Twilio Agent Connect</span>
+    <h1>An AI agent that calls, answers, texts, and hands off</h1>
+    <p class="thesis">An AI agent places an outbound reminder call. The customer can ask policy questions,
+    get a payment link by text, or ask for a person &mdash; which rings a <strong>softphone in the
+    browser</strong>.</p>
+
+    <div class="tracks" aria-label="Systems">
+      <span class="track"><span class="dot twilio"></span>Twilio Agent Connect</span>
+      <span class="track"><span class="dot llm"></span>OpenAI Agents SDK</span>
+      <span class="track"><span class="dot know"></span>Enterprise Knowledge</span>
+      <span class="track"><span class="dot sms"></span>Messaging</span>
+      <span class="track"><span class="dot browser"></span>Browser softphone</span>
+      <span class="track"><span class="dot backend"></span>Demo app</span>
+    </div>
+    <p class="legend-note">Tagged steps link to the relevant docs &mdash; full reference at the bottom.</p>
+  </header>
+
+  <section class="flow" aria-label="Call flow">
+
+    <div class="phase">
+      <p class="phase-label"><b>Phase 01</b> &mdash; Provision &amp; Trigger</p>
+      <div class="band">
+        <div class="node" style="--accent:var(--twilio)">
+          <div class="top"><span class="num">01</span></div>
+          <h3>Provision once</h3>
+          <p>Memory store, conversation configuration, knowledge base, and a number in a registered
+          Messaging Service.</p>
+          <div class="tags"><a class="tag twilio" href="https://www.twilio.com/docs/conversations/orchestrator" target="_blank" rel="noopener">Orchestrator</a><a class="tag sms" href="https://www.twilio.com/docs/messaging/services" target="_blank" rel="noopener">Messaging</a></div>
+        </div>
+        <div class="h-arrow" aria-hidden="true"></div>
+        <div class="node" style="--accent:var(--backend)">
+          <div class="top"><span class="num">02</span></div>
+          <h3>Trigger the call</h3>
+          <p>The page posts a number to <code>/api/call</code>. An allowlist gates who can be dialed.</p>
+          <div class="tags"><span class="tag backend">Demo app</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="v-arrow" aria-hidden="true"></div>
+
+    <div class="phase">
+      <p class="phase-label"><b>Phase 02</b> &mdash; Call &amp; Conversation</p>
+      <div class="band">
+        <div class="node" style="--accent:var(--twilio)">
+          <div class="top"><span class="num">03</span></div>
+          <h3>TAC places the call</h3>
+          <p>One SDK call emits TwiML that connects the audio to ConversationRelay.</p>
+          <div class="tags"><a class="tag twilio" href="https://www.twilio.com/docs/voice/api/call-resource" target="_blank" rel="noopener">Voice API</a><a class="tag twilio" href="https://www.twilio.com/docs/voice/twiml/connect/conversationrelay" target="_blank" rel="noopener">Relay</a></div>
+        </div>
+        <div class="h-arrow" aria-hidden="true"></div>
+        <div class="node" style="--accent:var(--twilio)">
+          <div class="top"><span class="num">04</span></div>
+          <h3>Greeting on answer</h3>
+          <p>A fixed welcome greeting carries the AI disclosure, spoken before any model call.</p>
+          <div class="tags"><a class="tag twilio" href="https://www.twilio.com/docs/voice/conversationrelay" target="_blank" rel="noopener">Relay</a></div>
+        </div>
+        <div class="h-arrow" aria-hidden="true"></div>
+        <div class="node" style="--accent:linear-gradient(90deg,var(--twilio),var(--llm))">
+          <div class="top"><span class="num">05</span></div>
+          <h3>Each utterance is a turn</h3>
+          <p>Speech becomes text, the model runs with three tools, the reply is spoken.</p>
+          <div class="tags"><a class="tag twilio" href="https://github.com/twilio/twilio-agent-connect-python" target="_blank" rel="noopener">TAC SDK</a><a class="tag llm" href="https://openai.github.io/openai-agents-python/" target="_blank" rel="noopener">Agents SDK</a></div>
+        </div>
+      </div>
+
+      <div class="v-arrow" aria-hidden="true"></div>
+
+      <div class="pivot">
+        <div class="node decision">
+          <div class="top"><span class="num">06</span></div>
+          <h3><span class="diamond">&#9670;</span>What does the caller want?</h3>
+          <p>The model picks a tool &mdash; or none, and just talks.</p>
+        </div>
+      </div>
+
+      <div class="fork">
+        <div class="prong">
+          <span class="plabel ask">Asks a question</span>
+          <span class="v-arrow ask" aria-hidden="true"></span>
+        </div>
+        <div class="prong">
+          <span class="plabel yes">Wants the link &#10003;</span>
+          <span class="v-arrow ok" aria-hidden="true"></span>
+        </div>
+        <div class="prong">
+          <span class="plabel hum">Wants a person</span>
+          <span class="v-arrow hum" aria-hidden="true"></span>
+        </div>
+        <div class="prong">
+          <span class="plabel no">Bad time &#10007;</span>
+          <span class="v-arrow no" aria-hidden="true"></span>
+          <div class="terminal">Ends politely. Sends nothing.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <p class="phase-label"><b>Phase 03</b> &mdash; The Three Tools</p>
+      <div class="band">
+        <div class="node" style="--accent:var(--know)">
+          <div class="top"><span class="num">07</span></div>
+          <h3>Answer from policy</h3>
+          <p>Searches the renewal FAQ. The agent is told never to invent a date or an amount.</p>
+          <div class="tags"><span class="tag know">Knowledge</span></div>
+        </div>
+        <div class="h-arrow" aria-hidden="true"></div>
+        <div class="node" style="--accent:var(--sms)">
+          <div class="top"><span class="num">08</span></div>
+          <h3>Text a tracked link</h3>
+          <p>Sends an SMS. The link points back at the app, so the click lands in the live feed.</p>
+          <div class="tags"><a class="tag sms" href="https://www.twilio.com/docs/messaging/api/message-resource" target="_blank" rel="noopener">Messaging</a></div>
+        </div>
+        <div class="h-arrow" aria-hidden="true"></div>
+        <div class="node" style="--accent:linear-gradient(90deg,var(--twilio),var(--browser))">
+          <div class="top"><span class="num">09</span></div>
+          <h3>Escalate to a human</h3>
+          <p>Ends the AI session and releases the still-live call for transfer.</p>
+          <div class="tags"><a class="tag twilio" href="https://www.twilio.com/docs/studio" target="_blank" rel="noopener">Studio</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="v-arrow" aria-hidden="true"></div>
+
+    <div class="phase">
+      <p class="phase-label"><b>Phase 04</b> &mdash; Handoff &amp; Live Feed</p>
+      <div class="band">
+        <div class="node" style="--accent:var(--browser)">
+          <div class="top"><span class="num">10</span></div>
+          <h3>Browser rings</h3>
+          <p>The app serves transfer TwiML that dials the Voice JS client on the page.</p>
+          <div class="tags"><a class="tag browser" href="https://www.twilio.com/docs/voice/twiml/dial" target="_blank" rel="noopener">Dial</a><a class="tag browser" href="https://www.twilio.com/docs/iam/access-tokens" target="_blank" rel="noopener">Tokens</a></div>
+        </div>
+        <div class="h-arrow" aria-hidden="true"></div>
+        <div class="node" style="--accent:var(--backend)">
+          <div class="top"><span class="num">11</span></div>
+          <h3>Everything streams</h3>
+          <p>Call status, utterances, tool calls, the SMS, and the link click push to the page over SSE.</p>
+          <div class="tags"><span class="tag backend">Demo app</span></div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============ ONE TURN ============ -->
+  <section class="sec" aria-label="Anatomy of one turn">
+    <h3>Anatomy of one turn</h3>
+    <p class="sub">Steps 05&ndash;09 in detail. TAC hands you text and speaks whatever you return; the model
+    and its tools sit in between.</p>
+
+    <div class="band">
+      <div class="node" style="--accent:var(--twilio)">
+        <div class="top"><span class="num">A</span></div>
+        <h3>Text arrives</h3>
+        <p>Relay sends the transcribed utterance over a signed websocket.</p>
+        <div class="tags"><span class="tag twilio">TAC</span></div>
+      </div>
+      <div class="h-arrow" aria-hidden="true"></div>
+      <div class="node" style="--accent:var(--twilio)">
+        <div class="top"><span class="num">B</span></div>
+        <h3>One handler</h3>
+        <p><code>on_message_ready</code> fires. This is the whole integration surface.</p>
+        <div class="tags"><span class="tag twilio">TAC</span></div>
+      </div>
+      <div class="h-arrow" aria-hidden="true"></div>
+      <div class="node" style="--accent:var(--llm)">
+        <div class="top"><span class="num">C</span></div>
+        <h3>Model runs</h3>
+        <p>History plus the new message, with three tools attached.</p>
+        <div class="tags"><span class="tag llm">Agents SDK</span></div>
+      </div>
+    </div>
+
+    <div class="v-arrow llm" aria-hidden="true"></div>
+
+    <div class="pivot">
+      <div class="node decision">
+        <div class="top"><span class="num">D</span></div>
+        <h3><span class="diamond">&#9670;</span>Call a tool?</h3>
+      </div>
+    </div>
+
+    <div class="fork">
+      <div class="prong">
+        <span class="plabel llm">Yes</span>
+        <span class="v-arrow llm" aria-hidden="true"></span>
+        <div class="terminal">Tool runs, result goes back to the model, which runs again.</div>
+      </div>
+      <div class="prong">
+        <span class="plabel no">No</span>
+        <span class="v-arrow" aria-hidden="true"></span>
+        <div class="terminal">Straight to the reply.</div>
+      </div>
+    </div>
+
+    <div class="v-arrow" aria-hidden="true"></div>
+
+    <div class="band">
+      <div class="node" style="--accent:var(--twilio)">
+        <div class="top"><span class="num">E</span></div>
+        <h3>Return a string</h3>
+        <p>The returned text is spoken to the caller. History is saved for the next turn.</p>
+        <div class="tags"><span class="tag twilio">TAC</span></div>
+      </div>
+      <div class="h-arrow" aria-hidden="true"></div>
+      <div class="node" style="--accent:var(--backend)">
+        <div class="top"><span class="num">F</span></div>
+        <h3>Publish to the feed</h3>
+        <p>The utterance, any tool name, and the reply go out over SSE.</p>
+        <div class="tags"><span class="tag backend">Demo app</span></div>
+      </div>
+    </div>
+
+    <div class="code" style="margin-top:32px"><span class="c"># the entire LLM boundary</span>
+tac.<em>on_message_ready</em>(handle_message_ready)
+
+<span class="c">async def</span> handle_message_ready(user_message, context, _memory) -&gt; <span class="c">str</span>:
+    agent = Agent(
+        name=<span class="s">"Ava"</span>,
+        instructions=VOICE_INSTRUCTIONS <span class="c">if</span> on_voice <span class="c">else</span> SMS_INSTRUCTIONS,
+        tools=[t.<em>to_openai_agents_sdk_tool</em>() <span class="c">for</span> t <span class="c">in</span> tools],
+    )
+    result = <span class="c">await</span> Runner.run(agent, history + [{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: user_message}])
+    <span class="c">return</span> result.final_output_as(<span class="c">str</span>)   <span class="c"># spoken to the caller</span></div>
+
+    <h4 style="font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:0 0 12px">Running on Gemini &mdash; two paths</h4>
+
+    <table class="matrix wrap1">
+      <thead>
+        <tr><th>Path</th><th>Agent lives in</th><th>Integration</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Gemini as the model</strong></td>
+          <td>Your code. Prompt and the three TAC tools unchanged.</td>
+          <td>Gemini's OpenAI-compatible endpoint. Swap <code>model=</code> only.</td>
+        </tr>
+        <tr>
+          <td><strong>CX Agent Studio</strong></td>
+          <td>Google. Prompt, flows and tools configured in the platform.</td>
+          <td>Handler forwards the utterance to the Sessions API
+          (<code>runSession</code> / <code>streamRunSession</code>) and speaks the reply. Twilio is a listed
+          deployment target.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="note" style="margin-top:0">On the CX Agent Studio path,
+    <code>to_openai_agents_sdk_tool()</code> and the three tools drop out &mdash; tool execution is
+    platform-hosted. Steps A, B, E and F of the chart above are unchanged; C and D move to Google.</p>
+
+    <div class="code" style="margin-top:18px"><span class="c"># Path 1 — Gemini as the model</span>
+<span class="c">from</span> agents <span class="c">import</span> Agent, OpenAIChatCompletionsModel
+<span class="c">from</span> openai <span class="c">import</span> AsyncOpenAI
+
+gemini = AsyncOpenAI(
+    api_key=os.environ[<span class="s">"GEMINI_API_KEY"</span>],
+    base_url=<span class="s">"https://generativelanguage.googleapis.com/v1beta/openai/"</span>,
+)
+
+agent = Agent(
+    name=<span class="s">"Ava"</span>,
+    instructions=VOICE_INSTRUCTIONS,
+    tools=[t.to_openai_agents_sdk_tool() <span class="c">for</span> t <span class="c">in</span> tools],   <span class="c"># unchanged</span>
+    model=<em>OpenAIChatCompletionsModel</em>(model=<span class="s">"gemini-3.6-flash"</span>, openai_client=gemini),
+)</div>
+  </section>
+
+  <!-- ============ TOOLS ============ -->
+  <section class="sec" aria-label="The three tools">
+    <h3>The three tools</h3>
+    <p class="sub">Tools are defined as TAC objects and converted to the model runtime's format at the last
+    moment, so the runtime is swappable.</p>
+
+    <table class="matrix wrap1">
+      <thead>
+        <tr><th>Tool</th><th>Built with</th><th>Does</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>search_renewal_faq</code></td>
+          <td>SDK built-in</td>
+          <td>Queries Enterprise Knowledge, so answers come from approved content.</td>
+        </tr>
+        <tr>
+          <td><code>send_payment_link</code></td>
+          <td>Your own function</td>
+          <td>Sends the SMS. Schema comes from the signature and docstring.</td>
+        </tr>
+        <tr>
+          <td><code>connect_to_human_agent</code></td>
+          <td>SDK built-in</td>
+          <td>Ends the AI session and releases the live call.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ RULES ============ -->
+  <section class="sec" aria-label="Design rules">
+    <h3>Design rules</h3>
+    <p class="sub">Four constraints that shape the agent.</p>
+
+    <table class="matrix wrap1">
+      <thead>
+        <tr><th>Rule</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>The model never sees the phone number</strong></td>
+          <td>The destination is an injected argument, hidden from the model and supplied from the session. The
+          model decides <em>whether</em> to text, never <em>whom</em>.</td>
+        </tr>
+        <tr>
+          <td><strong>Bind tools per conversation</strong></td>
+          <td>Injection mutates the tool in place, so one shared instance leaks a caller's session into another
+          caller's turn. Build per turn.</td>
+        </tr>
+        <tr>
+          <td><strong>Voice and SMS get different agents</strong></td>
+          <td>Voice gets all three tools; an SMS reply gets knowledge only, and its own prompt &mdash; replies
+          arrive with empty history and must not re-introduce the agent.</td>
+        </tr>
+        <tr>
+          <td><strong>Consent is explicit</strong></td>
+          <td>Agreeing to <em>&ldquo;is now a good time?&rdquo;</em> is not agreeing to receive a text. The
+          prompt states this, or the agent texts on the first &ldquo;yes&rdquo;.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ VOICE PLANE ============ -->
+  <section class="sec" aria-label="The call timeline">
+    <h3>One call, two far ends</h3>
+    <p class="sub">The call never drops. Only who is on the other end changes.</p>
+
+    <div class="gantt" role="img" aria-label="Call timeline: the customer stays connected throughout; ConversationRelay carries the AI conversation until handoff, then the browser softphone takes over the same call.">
+      <div class="gcol-labels">
+        <div class="who">Customer</div>
+        <div class="who">AI (Relay)</div>
+        <div class="who">Browser agent</div>
+      </div>
+      <div class="gcol-plot">
+        <div class="marker"><span class="mlabel">Handoff &middot; relay ends &#10003;</span></div>
+        <div class="trackbar"><div class="bar cust" style="left:0;right:0">connected start to finish</div></div>
+        <div class="trackbar"><div class="bar ai" style="left:0;width:64%">greet &middot; answer &middot; text the link &middot; release</div></div>
+        <div class="trackbar"><div class="bar human" style="left:64%;right:0">softphone picks up &mdash; same call</div></div>
+      </div>
+    </div>
+
+    <p class="note">When the relay session ends the call is <strong>still up</strong>, and Twilio asks the app
+    what to do next. The app answers with <code>&lt;Dial&gt;&lt;Client&gt;</code> and the browser rings. Twilio
+    asks on every relay ending, not just deliberate handoffs, so the app only dials when handoff data is
+    present.</p>
+  </section>
+
+  <!-- ============ DOCS ============ -->
+  <section class="sec docs" aria-label="Documentation">
+    <h3>Reference</h3>
+    <p class="sub">Docs for the platforms, and the files in the repo.</p>
+    <div class="docs-grid">
+
+      <div class="col-twilio">
+        <h4><span class="dot twilio"></span>Twilio</h4>
+        <ul>
+          <li><a href="https://github.com/twilio/twilio-agent-connect-python" target="_blank" rel="noopener">Agent Connect &mdash; Python SDK</a><span class="desc">The SDK the demo is built on.</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/conversationrelay" target="_blank" rel="noopener">ConversationRelay</a><span class="desc">Speech in, speech out over a websocket.</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/twiml/connect/conversationrelay" target="_blank" rel="noopener">ConversationRelay &mdash; TwiML</a><span class="desc">The verb and its action URL.</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/api/call-resource" target="_blank" rel="noopener">Voice &mdash; Call resource</a><span class="desc">Placing and tracking the call.</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/twiml/dial" target="_blank" rel="noopener">Dial &mdash; TwiML verb</a><span class="desc">Transferring to a browser client.</span></li>
+          <li><a href="https://www.twilio.com/docs/voice/sdks/javascript" target="_blank" rel="noopener">Voice JavaScript SDK</a><span class="desc">The softphone on the page.</span></li>
+          <li><a href="https://www.twilio.com/docs/iam/access-tokens" target="_blank" rel="noopener">Access tokens</a><span class="desc">Letting the browser receive the call.</span></li>
+          <li><a href="https://www.twilio.com/docs/conversations/orchestrator" target="_blank" rel="noopener">Conversation Orchestrator</a><span class="desc">Groups the call and the text together.</span></li>
+          <li><a href="https://www.twilio.com/docs/conversations/memory" target="_blank" rel="noopener">Conversation Memory</a><span class="desc">The memory store behind it.</span></li>
+          <li><a href="https://www.twilio.com/docs/messaging/services" target="_blank" rel="noopener">Messaging Services</a><span class="desc">Sender pool for the SMS.</span></li>
+          <li><a href="https://www.twilio.com/docs/messaging/compliance/a2p-10dlc" target="_blank" rel="noopener">A2P 10DLC registration</a><span class="desc">Required before US SMS works.</span></li>
+          <li><a href="https://www.twilio.com/docs/usage/webhooks/webhooks-security" target="_blank" rel="noopener">Webhook security</a><span class="desc">Signature validation.</span></li>
+        </ul>
+      </div>
+
+      <div class="col-build">
+        <h4><span class="dot llm"></span>The build</h4>
+        <ul>
+          <li><a href="https://openai.github.io/openai-agents-python/" target="_blank" rel="noopener">OpenAI Agents SDK</a><span class="desc">The model runtime.</span></li>
+          <li><a href="https://ai.google.dev/gemini-api/docs/openai" target="_blank" rel="noopener">Gemini &mdash; OpenAI compatibility</a><span class="desc">Path 1: Gemini as the model.</span></li>
+          <li><a href="https://docs.cloud.google.com/gemini-enterprise-cx/cx-agent-studio" target="_blank" rel="noopener">CX Agent Studio &mdash; docs</a><span class="desc">Path 2: Sessions API, tools, deployment targets.</span></li>
+          <li><a href="https://cloud.google.com/products/conversational-agents" target="_blank" rel="noopener">CX Agent Studio &mdash; product</a><span class="desc">The evolution of Dialogflow CX.</span></li>
+          <li><a href="https://www.twilio.com/docs/studio" target="_blank" rel="noopener">Twilio Studio</a><span class="desc">Needed to build the handoff tool.</span></li>
+          <li><span class="plain">app.py</span><span class="desc">Channels, the turn handler, the three tools.</span></li>
+          <li><span class="plain">web.py</span><span class="desc">Trigger, SSE, token, transfer TwiML, tracked link.</span></li>
+          <li><span class="plain">README.md</span><span class="desc">Setup and provisioning.</span></li>
+          <li><span class="plain">HANDOFF.md</span><span class="desc">Status and architecture.</span></li>
+          <li><span class="plain">KNOWN-ISSUES.md</span><span class="desc">Every finding and its fix.</span></li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

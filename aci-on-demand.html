@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enabling Advanced Call Insights on demand</title>
+<style>
+  :root{
+    --field:#ECF1F3;
+    --paper:#FFFFFF;
+    --ink:#14283A;
+    --muted:#5A6B7A;
+    --line:#C6D2D9;
+    --accent:#EF223A;
+    --display:"Avenir Next","Futura","Century Gothic","Trebuchet MS",sans-serif;
+    --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--field);color:var(--ink);
+    font-family:var(--body);font-size:16.5px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:0 28px}
+
+  a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+  a:hover{border-bottom-color:var(--accent)}
+  code{font-family:var(--mono);font-size:.88em;background:#E4EBEF;padding:1px 5px;border-radius:3px}
+
+  header{padding:60px 0 0}
+  .eyebrow{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--accent);
+  }
+  h1{
+    font-family:var(--display);font-weight:600;
+    font-size:clamp(31px,4.6vw,44px);letter-spacing:-.02em;line-height:1.1;
+    margin:12px 0 14px;max-width:24ch;
+  }
+  .thesis{color:var(--muted);font-size:18px;max-width:60ch}
+  .topbar{
+    display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:24px;
+    padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .topbar a{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em}
+  .topbar span{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+
+  section{margin-top:46px}
+  h2{
+    font-family:var(--display);font-size:23px;font-weight:600;
+    letter-spacing:-.01em;margin-bottom:14px;
+  }
+  h3{font-family:var(--display);font-size:16.5px;font-weight:600;margin:22px 0 5px}
+  p{margin-bottom:13px;max-width:66ch}
+
+  ol.steps{list-style:none;counter-reset:s;margin:4px 0 0}
+  ol.steps li{
+    counter-increment:s;position:relative;
+    padding:0 0 16px 42px;border-left:1px solid var(--line);margin-left:12px;
+  }
+  ol.steps li:last-child{border-left-color:transparent;padding-bottom:0}
+  ol.steps li::before{
+    content:counter(s);position:absolute;left:-13px;top:-1px;
+    width:26px;height:26px;border-radius:50%;
+    background:var(--paper);border:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;
+  }
+  ol.steps strong{display:block;font-family:var(--display);font-size:16.5px;margin-bottom:2px}
+  ol.steps p{font-size:15.5px;color:var(--muted);margin:0;max-width:62ch}
+
+  .lanes{
+    display:grid;grid-template-columns:1fr 1fr;gap:1px;
+    background:var(--line);border:1px solid var(--line);
+    border-radius:5px;overflow:hidden;
+  }
+  .lanes > div{background:var(--paper);padding:18px 20px}
+  .lanes .k{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted);display:block;margin-bottom:10px;
+  }
+  .lanes ul{list-style:none;font-size:14.5px;color:var(--muted)}
+  .lanes li{padding-left:13px;position:relative;margin-bottom:5px}
+  .lanes li::before{content:"·";position:absolute;left:2px;color:var(--line)}
+
+  ol.plain{list-style:none;counter-reset:c;margin:0}
+  ol.plain > li{counter-increment:c;margin-bottom:22px}
+  ol.plain > li > h3{margin-top:0}
+  ol.plain > li > h3::before{
+    content:counter(c) ". ";font-family:var(--mono);font-size:14px;color:var(--muted);
+  }
+
+  ul.bul{list-style:none;margin:10px 0 13px}
+  ul.bul li{padding-left:17px;position:relative;margin-bottom:7px;max-width:64ch;font-size:15.5px}
+  ul.bul li::before{
+    content:"";position:absolute;left:0;top:.62em;
+    width:5px;height:5px;border-radius:50%;background:var(--accent);
+  }
+
+  table.bar{
+    width:100%;border-collapse:collapse;margin:12px 0 4px;max-width:520px;
+    background:var(--paper);border:1px solid var(--line);border-radius:5px;
+  }
+  table.bar th,table.bar td{
+    text-align:left;padding:8px 16px;border-bottom:1px solid var(--line);font-size:15px;
+  }
+  table.bar tr:last-child td{border-bottom:none}
+  table.bar th{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);font-weight:400;
+  }
+  table.bar td:last-child{font-family:var(--mono);font-size:14px}
+
+  dl.ref{margin:0;border-top:1px solid var(--line)}
+  dl.ref > div{
+    display:grid;grid-template-columns:150px 1fr;gap:3px 22px;
+    padding:12px 0;border-bottom:1px solid var(--line);
+  }
+  dl.ref dt{
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);padding-top:3px;
+  }
+  dl.ref dd a{font-size:15.5px}
+  dl.ref dd .d{display:block;font-size:14px;color:var(--muted);margin-top:1px}
+
+  footer{
+    margin:52px 0 72px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:14px;color:var(--muted);
+  }
+  footer p{max-width:64ch}
+
+  @media (max-width:680px){
+    .lanes{grid-template-columns:1fr}
+    dl.ref > div{grid-template-columns:1fr;gap:2px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Proof of concept &middot; Voice Insights</span>
+    <h1>Enabling Advanced Call Insights on demand</h1>
+    <p class="thesis">ACI bills for every call it touches. The free client-side signals from the
+    Voice JS SDK can decide when it is worth paying for, arm it over the REST API, and turn it back
+    off once there is enough data.</p>
+    <div class="topbar">
+      <a href="https://www.loom.com/share/9edfab0c2a994812a35e1b443e3ad600">Loom: video demo and walkthrough</a>
+      <a href="https://github.com/twilio-demos/dtolb-aci-quality-poc">Code on GitHub</a>
+      <span>Dan Tolbert &middot; 5 Aug 2026</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Problem</h2>
+    <p>Accounts using the Client SDK need to diagnose poor quality calls. ACI carries the data to do
+    that, but leaving it on for every call costs too much in a price-sensitive deployment.</p>
+    <p>The <a href="https://www.twilio.com/docs/voice/voice-insights/api/call/voice-insights-settings-resource">Voice
+    Insights Settings API</a> toggles Advanced Features for an account or a subaccount, so an
+    application can control it at runtime.</p>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li>
+        <strong>Read the SDK quality signals</strong>
+        <p>A <code>sample</code> event each second carries MOS, jitter, RTT, loss and audio levels.
+        <code>warning</code> and <code>warning-cleared</code> fire as thresholds break. Available on
+        every call with no ACI.</p>
+      </li>
+      <li>
+        <strong>Set thresholds with a sustain window</strong>
+        <p>One bad second is noise. Twelve consecutive bad seconds is a call going wrong. Rows combine
+        with any, all, or n-of-m so one noisy metric cannot trip the whole thing.</p>
+      </li>
+      <li>
+        <strong>Post a beacon when the condition holds</strong>
+        <p>The server reads the current ACI state before writing, since the change is account-scoped
+        and billable.</p>
+      </li>
+      <li>
+        <strong>Later calls arrive instrumented</strong>
+        <p>Both sides become visible: <code>sdk_edge</code> and <code>client_edge</code> for the
+        browser leg, <code>carrier_edge</code> for the PSTN leg. Pass <code>SubaccountSid</code> to
+        scope it to one customer.</p>
+      </li>
+      <li>
+        <strong>Disarm once the sample is large enough</strong>
+        <p>Charges stop. Data already collected stays queryable for 30 days.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Client signals compared with ACI</h2>
+    <div class="lanes">
+      <div>
+        <span class="k">Client-side · free · instant</span>
+        <ul>
+          <li>MOS, jitter, RTT, loss at 1 Hz</li>
+          <li>SDK warnings as they raise and clear</li>
+          <li>Whether media required TURN</li>
+          <li>Arrives in milliseconds</li>
+          <li>One end of the call only</li>
+        </ul>
+      </div>
+      <div>
+        <span class="k">ACI · billed · delayed</span>
+        <ul>
+          <li>Per-edge metrics, both directions</li>
+          <li>Carrier-side view of the PSTN leg</li>
+          <li>Call summaries and annotations</li>
+          <li>Events in ~90 s, summaries 10 to 30 min</li>
+          <li>Requires Advanced Features active</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:14px">The delay is operationally significant, which is why the demo keeps
+    the two on separate timelines.</p>
+  </section>
+
+  <section>
+    <h2>Constraints</h2>
+    <ul class="bul">
+      <li><strong>Arming ACI does not instrument the call that tripped the beacon.</strong>
+        Eligibility is fixed when the call is created and there is no backfill, so the trigger call
+        stays un-instrumented. You are buying data about the next call.</li>
+      <li><strong>Annotations require ACI.</strong> Agent feedback on a call that was not
+        instrumented returns error <code>17007</code> or a bare <code>401</code>. Surface that
+        response rather than swallowing it.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Using the data</h2>
+    <ol class="plain">
+      <li>
+        <h3>Locate the fault by edge</h3>
+        <p>Each edge carries inbound and outbound metrics, so comparing them isolates the segment:</p>
+        <ul class="bul">
+          <li>Bad at <code>sdk_edge</code>, clean at <code>client_edge</code>: the customer's last
+            mile, LAN or VPN.</li>
+          <li>Bad at <code>client_edge</code> as well: upstream of the browser.</li>
+          <li>Bad at <code>carrier_edge</code>: the PSTN side.</li>
+        </ul>
+        <p>See <a href="https://www.twilio.com/docs/voice/voice-insights/api/call/understanding-edges">Understanding
+        Twilio Media Edges</a> for which edges a given call type has.</p>
+      </li>
+      <li>
+        <h3>Compare against the documented requirements</h3>
+        <p>From <a href="https://www.twilio.com/docs/voice/sdks/network-connectivity-requirements">Voice
+        SDKs Network Connectivity Requirements</a>:</p>
+        <table class="bar">
+          <tr><th>Measure</th><th>Requirement</th></tr>
+          <tr><td>Round-trip time</td><td>&lt; 200 ms</td></tr>
+          <tr><td>Jitter</td><td>&lt; 30 ms</td></tr>
+          <tr><td>Packet loss</td><td>&lt; 3 %</td></tr>
+          <tr><td>Bandwidth, Opus</td><td>40 kbps up / down</td></tr>
+          <tr><td>Bandwidth, PCMU</td><td>100 kbps up / down</td></tr>
+        </table>
+      </li>
+      <li>
+        <h3>Give the customer specific remediations</h3>
+        <ul class="bul">
+          <li><strong>Firewall.</strong> Media is UDP to <code>168.86.128.0/18</code> on destination
+            ports <code>10000-60000</code>. JS SDK signalling is TCP 443 to the
+            <code>chunderw-*.twilio.com</code> gateways. Blocked UDP produces
+            <a href="https://www.twilio.com/docs/api/errors/31009">error 31009</a>.</li>
+          <li><strong>Media relayed over TURN.</strong> A relay candidate pair means UDP is blocked
+            and every call is taking a longer path.</li>
+          <li><strong>DNS and VPN placing users on the wrong edge.</strong> Global Low Latency needs a
+            resolver supporting RFC 7871. A VPN to another region, or an Anycast resolver such as
+            <code>8.8.8.8</code>, can route a Chicago agent through Frankfurt. Test with
+            <code>dig edns-client-sub.net TXT</code> and check for <code>ecs: True</code>, or pin
+            <code>edge</code> explicitly.</li>
+          <li><strong>RTP backhauled through the corporate VPN</strong>, and wifi where wired is
+            available.</li>
+        </ul>
+      </li>
+      <li>
+        <h3>Tune thresholds from the annotations</h3>
+        <p>With ACI active, annotations attach agent feedback to the same CallSid as the objective
+        metrics. A few dozen of those show what MOS corresponds to a complaint on that customer's
+        network, which allows per-account thresholds instead of one default everywhere.</p>
+      </li>
+      <li>
+        <h3>Aggregate before disarming</h3>
+        <p>The <a href="https://www.twilio.com/docs/voice/voice-insights/api/call/call-summaries-resource">Call
+        Summaries resource</a> supports clustering by agent, office, ISP or hour of day. Degradation
+        that tracks the workday points to contention; degradation isolated to one office points to
+        that uplink. Retention is 30 days, so export anything worth keeping.</p>
+      </li>
+    </ol>
+    <p>For a support escalation, a CallSid plus the edge comparison and the event stream replaces a
+    general quality complaint with a claim about a specific leg.</p>
+  </section>
+
+  <section>
+    <h2>Reference</h2>
+    <dl class="ref">
+      <div>
+        <dt>Settings API</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/voice-insights-settings-resource">Voice Insights Settings Resource</a>
+          <span class="d"><code>GET</code> / <code>POST https://insights.twilio.com/v1/Voice/Settings</code>. Takes <code>AdvancedFeatures</code>, <code>VoiceTrace</code>, optional <code>SubaccountSid</code>. The POST is a partial update, so send both flags.</span></dd>
+      </div>
+      <div>
+        <dt>Signal catalog</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/details-sdk-call-quality-events">Details: Voice Insights SDK Events</a>
+          <span class="d">Every named event with its group and level.</span></dd>
+      </div>
+      <div>
+        <dt>SDK events</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/sdks/javascript/twiliocall">Twilio.Call</a> &middot; <a href="https://www.twilio.com/docs/voice/sdks/javascript/twiliodevice">Twilio.Device</a>
+          <span class="d"><code>sample</code>, <code>warning</code>, <code>warning-cleared</code>, <code>volume</code>, <code>reconnecting</code>.</span></dd>
+      </div>
+      <div>
+        <dt>Media edges</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/voice-insights/api/call/understanding-edges">Understanding Twilio Media Edges</a>
+          <span class="d">Which edges exist per call type and what each stream represents.</span></dd>
+      </div>
+      <div>
+        <dt>Insights data</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/voice-insights/api/call">Call Insights API</a> &middot; <a href="https://www.twilio.com/docs/voice/voice-insights/api/call/call-summaries-resource">Call Summaries</a>
+          <span class="d">Summaries, metrics, events and annotations. All require Advanced Features.</span></dd>
+      </div>
+      <div>
+        <dt>Event Streams</dt>
+        <dd><a href="https://www.twilio.com/docs/events/event-types/voice-insights/voice-sdk-events">Voice SDK Events</a> &middot; <a href="https://www.twilio.com/docs/events/event-types/voice-insights/voice-sdk-metrics">Voice SDK Metrics</a>
+          <span class="d">The same signals as CloudEvents. Pin schema versions; a stale but valid version delivers a degraded payload instead of an error.</span></dd>
+      </div>
+      <div>
+        <dt>Network</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/sdks/network-connectivity-requirements">Voice SDKs Network Connectivity Requirements</a>
+          <span class="d">Ports, IP ranges, bandwidth and the GLL resolver requirement.</span></dd>
+      </div>
+      <div>
+        <dt>Overview</dt>
+        <dd><a href="https://www.twilio.com/docs/voice/voice-insights/advanced-features">Advanced Features</a> &middot; <a href="https://www.twilio.com/docs/voice/voice-insights">Voice Insights</a>
+          <span class="d">What Advanced Features unlocks per surface, plus the Console path.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <footer>
+    <p>Proof of concept, not production: no auth, no hardening, no multi-tenancy. Questions
+    welcome.</p>
+  </footer>
+
+</div>
+</body>
+</html>
